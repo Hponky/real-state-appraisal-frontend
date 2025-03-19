@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useAppraisalForm } from './useAppraisalForm';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,61 +54,19 @@ const colombianCities = {
 const colombianDepartments = Object.keys(colombianCities);
 
 export default function AppraisalForm() {
-  const router = useRouter();
-  const [formData, setFormData] = useState({
-    department: "",
-    city: "",
-    address: "",
-    area: "",
-    stratum: "",
-    adminFee: "",
-    expectedValue: "",
-  });
-  const [images, setImages] = useState<string[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    formData,
+    setFormData,
+    images,
+    errors,
+    isSubmitting,
+    handleImageUpload,
+    removeImage,
+    handleSubmit
+  } = useAppraisalForm();
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newImages = Array.from(files).map(file => URL.createObjectURL(file));
-      setImages(prev => [...prev, ...newImages].slice(0, 10));
-    }
-  };
-
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.department) newErrors.department = "Seleccione un departamento";
-    if (!formData.city) newErrors.city = "Seleccione una ciudad";
-    if (!formData.address) newErrors.address = "Ingrese una dirección";
-    if (!formData.stratum) newErrors.stratum = "Seleccione un estrato";
-    if (!formData.expectedValue) newErrors.expectedValue = "Ingrese el valor esperado";
-    if (images.length === 0) newErrors.images = "Cargue al menos una imagen";
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    setIsSubmitting(true);
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      router.push("/appraisal/results");
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // Remove duplicate state declarations and handlers since they're now in the hook
+  // Remove: const router, useState declarations, and all the handler functions
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary py-8">
@@ -128,7 +85,7 @@ export default function AppraisalForm() {
             <h1 className="text-3xl font-bold mb-2">Ingreso de Datos del Inmueble</h1>
             <p className="text-muted-foreground mb-8">Complete la información requerida para evaluar su inmueble</p>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="department">Departamento</Label>
@@ -238,11 +195,11 @@ export default function AppraisalForm() {
               <div className="space-y-2">
                 <Label htmlFor="images">Fotografías del Inmueble (máximo 10)</Label>
                 <div className="border-2 border-dashed border-muted rounded-lg p-6 text-center">
-                  <Input
-                    id="images"
+                  <input
                     type="file"
-                    accept="image/*"
+                    id="images"
                     multiple
+                    accept="image/*"
                     onChange={handleImageUpload}
                     className="hidden"
                   />
