@@ -16,43 +16,6 @@ import {
 import Link from "next/link";
 import { motion } from "framer-motion";
 
-const colombianCities = {
-  "Amazonas": ["Leticia", "Puerto Nariño"],
-  "Antioquia": ["Medellín", "Bello", "Envigado", "Itagüí", "Rionegro", "Sabaneta"],
-  "Arauca": ["Arauca", "Saravena", "Tame"],
-  "Atlántico": ["Barranquilla", "Soledad", "Malambo"],
-  "Bolívar": ["Cartagena", "Magangué", "Turbaco"],
-  "Boyacá": ["Tunja", "Duitama", "Sogamoso"],
-  "Caldas": ["Manizales", "Chinchiná", "La Dorada"],
-  "Caquetá": ["Florencia", "San Vicente del Caguán"],
-  "Casanare": ["Yopal", "Aguazul", "Villanueva"],
-  "Cauca": ["Popayán", "Santander de Quilichao"],
-  "Cesar": ["Valledupar", "Aguachica", "La Jagua"],
-  "Chocó": ["Quibdó", "Istmina"],
-  "Córdoba": ["Montería", "Cereté", "Lorica"],
-  "Cundinamarca": ["Bogotá", "Soacha", "Zipaquirá", "Chía", "Facatativá", "Fusagasugá"],
-  "Guainía": ["Inírida"],
-  "Guaviare": ["San José del Guaviare"],
-  "Huila": ["Neiva", "Pitalito", "Garzón"],
-  "La Guajira": ["Riohacha", "Maicao", "Uribia"],
-  "Magdalena": ["Santa Marta", "Ciénaga", "Fundación"],
-  "Meta": ["Villavicencio", "Acacías", "Granada"],
-  "Nariño": ["Pasto", "Ipiales", "Tumaco"],
-  "Norte de Santander": ["Cúcuta", "Ocaña", "Pamplona"],
-  "Putumayo": ["Mocoa", "Puerto Asís"],
-  "Quindío": ["Armenia", "Calarcá", "La Tebaida"],
-  "Risaralda": ["Pereira", "Dosquebradas", "Santa Rosa de Cabal"],
-  "San Andrés y Providencia": ["San Andrés", "Providencia"],
-  "Santander": ["Bucaramanga", "Floridablanca", "Girón", "Piedecuesta"],
-  "Sucre": ["Sincelejo", "Corozal"],
-  "Tolima": ["Ibagué", "Espinal", "Melgar"],
-  "Valle del Cauca": ["Cali", "Buenaventura", "Palmira", "Yumbo", "Jamundí", "Tuluá"],
-  "Vaupés": ["Mitú"],
-  "Vichada": ["Puerto Carreño"]
-} as const;
-
-const colombianDepartments = Object.keys(colombianCities);
-
 export default function AppraisalForm() {
   const {
     formData,
@@ -62,11 +25,10 @@ export default function AppraisalForm() {
     isSubmitting,
     handleImageUpload,
     removeImage,
-    handleSubmit
+    handleSubmit,
+    departments,
+    cities
   } = useAppraisalForm();
-
-  // Remove duplicate state declarations and handlers since they're now in the hook
-  // Remove: const router, useState declarations, and all the handler functions
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary py-8">
@@ -97,7 +59,7 @@ export default function AppraisalForm() {
                       <SelectValue placeholder="Seleccione departamento" />
                     </SelectTrigger>
                     <SelectContent>
-                      {colombianDepartments.map((dept) => (
+                      {departments.map((dept) => (
                         <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                       ))}
                     </SelectContent>
@@ -116,11 +78,9 @@ export default function AppraisalForm() {
                       <SelectValue placeholder="Seleccione ciudad" />
                     </SelectTrigger>
                     <SelectContent>
-                      {formData.department && 
-                        colombianCities[formData.department as keyof typeof colombianCities]?.map((city) => (
-                          <SelectItem key={city} value={city}>{city}</SelectItem>
-                        ))
-                      }
+                      {cities.map((city) => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   {errors.city && <p className="text-sm text-destructive">{errors.city}</p>}

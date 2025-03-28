@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { placesApiService } from "../services/placesApi";
 
 export interface FormData {
   department: string;
@@ -24,6 +25,49 @@ export function useAppraisalForm() {
   });
   const [images, setImages] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      try {
+        const placesData = await placesApiService.getPlaces();
+        if (Array.isArray(placesData)) {
+          const departmentNames = placesData.map(place => place.departamento);
+          console.log('Available departments:', departmentNames);
+          setDepartments(departmentNames);
+          setApiError(null);
+        }
+      } catch (error) {
+        console.error('Error fetching places:', error);
+        setApiError('Error al cargar los datos de ubicación - Intente recargar la página');
+        setDepartments([]);
+      }
+    };
+    console.log('Fetching places data...');
+    fetchPlaces();
+  }, []);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      if (formData.department) {
+        try {
+          const placesData = await placesApiService.getPlaces();
+          const selectedDepartment = placesData?.find(
+            place => place.departamento === formData.department
+          ) || { ciudades: [] };
+          
+          setCities(selectedDepartment.ciudades);
+        } catch (error) {
+          console.error('Error fetching cities:', error);
+          setCities([]);
+        }
+      } else {
+        setCities([]);
+      }
+    };
+
+    fetchCities();
+  }, [formData.department]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Store original file objects alongside URLs
@@ -115,6 +159,31 @@ export function useAppraisalForm() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      if (formData.department) {
+        try {
+          const placesData = await placesApiService.getPlaces();
+          const selectedDepartment = placesData?.find(
+            place => place.departamento === formData.department
+          ) || { ciudades: [] };
+          
+          setCities(selectedDepartment.ciudades);
+        } catch (error) {
+          console.error('Error fetching cities:', error);
+          setCities([]);
+        }
+      } else {
+        setCities([]);
+      }
+    };
+
+    fetchCities();
+  }, [formData.department]);
+
   return {
     formData,
     setFormData,
@@ -123,6 +192,8 @@ export function useAppraisalForm() {
     isSubmitting,
     handleImageUpload,
     removeImage,
-    handleSubmit
+    handleSubmit,
+    departments,
+    cities
   };
 }
