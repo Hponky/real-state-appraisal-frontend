@@ -19,11 +19,9 @@ class PlacesApiService implements IPlacesApiService {
       }
       
       const data = await response.json();
-      console.log('Places data loaded:', data);
       return Array.isArray(data) ? data : [];
     } catch (error) {
-      console.error('Error fetching places:', error);
-      throw error;
+      throw new Error(`Error fetching places: ${error}`);
     }
   }
 }
