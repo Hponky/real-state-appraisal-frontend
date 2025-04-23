@@ -1,4 +1,4 @@
-interface Department {
+export interface Department {
   id: number;
   departamento: string;
   ciudades: string[];
