@@ -1,6 +1,6 @@
-import { renderHook, act } from '@testing-library/react'; // Import from @testing-library/react
+import { renderHook, act, waitFor } from '@testing-library/react'; // Import from @testing-library/react
 import { useAppraisalForm } from '../useAppraisalForm';
-import { AppraisalFormData } from '../appraisalFormSchema';
+import { AppraisalFormData, appraisalFormSchema } from '../appraisalFormSchema'; // Import the schema and type
 import { placesApiService, Department } from '../../services/placesApi'; // Import Department type
 import { useImageHandler } from '../useImageHandler';
 import { useMaterialQualityEntries } from '../useMaterialQualityEntries';
@@ -57,7 +57,7 @@ describe('useAppraisalForm', () => {
     });
 
     mockUseAppraisalSubmission.mockReturnValue({
-      submitFormData: jest.fn(),
+      submitFormData: jest.fn(), // Simplified mock: just a function that can be resolved/rejected
     });
 
     // Default mock for placesApiService
@@ -70,6 +70,12 @@ describe('useAppraisalForm', () => {
   test('should initialize with default form data', () => {
     const { result } = renderHook(() => useAppraisalForm());
     expect(result.current.formData).toEqual(initialFormData);
+  });
+
+  test('initialFormData should be invalid according to schema', () => {
+    const result = appraisalFormSchema.safeParse(initialFormData);
+    console.log("Validation result for initialFormData:", result); // Log the result
+    expect(result.success).toBe(false);
   });
 
   test('should update form data using setFormData', () => {
@@ -126,46 +132,51 @@ describe('useAppraisalForm', () => {
   });
 
   test('should call clearImageErrors before validation in handleSubmit', async () => {
-    const { result } = renderHook(() => useAppraisalForm());
-
     const mockClearImageErrors = jest.fn();
+    const mockSubmitFormData = jest.fn();
+
     mockUseImageHandler.mockReturnValue({
-      images: [],
-      imageFiles: [],
+      images: ['dummy.jpg'], // Provide dummy data to pass validation
+      imageFiles: [new File(['dummy'], 'dummy.jpg', { type: 'image/jpeg' })],
       imageErrors: null,
       handleImageUpload: jest.fn(),
       removeImage: jest.fn(),
       clearImageErrors: mockClearImageErrors,
     });
 
-    // Mock validateForm to prevent actual validation logic interference
-    const validateFormSpy = jest.spyOn(result.current as any, 'validateForm').mockReturnValue(true);
-
-    // Mock submitFormData to prevent actual submission
-    const mockSubmitFormData = jest.fn();
     mockUseAppraisalSubmission.mockReturnValue({
       submitFormData: mockSubmitFormData,
     });
 
-    // Re-render the hook to apply the new mocks
-    const { result: reRenderedResult } = renderHook(() => useAppraisalForm());
+    // Render the hook with the mocked dependencies
+    const { result } = renderHook(() => useAppraisalForm());
 
-    await act(async () => {
-      await reRenderedResult.current.submitFormData(); // Remove the incorrect argument
+    // Set form data to be valid for submission
+    act(() => {
+        result.current.setFormData({
+            department: 'Dept', city: 'City', address: 'Address', area: 100,
+            stratum: '3', adminFee: 100, expectedValue: 1000, propertyType: 'House',
+            materialQualityEntries: []
+        });
     });
 
-    // Replace toHaveBeenCalledBefore with checks that both were called
+
+    await act(async () => {
+      await result.current.submitFormData();
+    });
+
+    // Verify that clearImageErrors was called and submitFormData was called
+    // We cannot directly check if clearImageErrors was called *before* validation
+    // without spying on the internal validateForm function, which is not exposed.
+    // We rely on the hook's implementation detail that it clears errors before validating.
     expect(mockClearImageErrors).toHaveBeenCalled();
-    expect(validateFormSpy).toHaveBeenCalled();
+    expect(mockSubmitFormData).toHaveBeenCalled();
   });
 
   test('should call validateForm and submitFormData on handleSubmit if form is valid', async () => {
-    const { result } = renderHook(() => useAppraisalForm());
+    const mockSubmitFormData = jest.fn();
 
-    // Mock validateForm to return true for this test
-    const validateFormSpy = jest.spyOn(result.current as any, 'validateForm').mockReturnValue(true);
-
-    // Mock child hook return values for this test
+    // Mock child hook return values for this test to simulate a valid state
     mockUseImageHandler.mockReturnValue({
       images: ['image1.jpg'], // Simulate having an image for validation
       imageFiles: [new File(['dummy'], 'image1.jpg', { type: 'image/jpeg' })],
@@ -175,57 +186,74 @@ describe('useAppraisalForm', () => {
       clearImageErrors: jest.fn(),
     });
 
-    const mockSubmitFormData = jest.fn();
     mockUseAppraisalSubmission.mockReturnValue({
       submitFormData: mockSubmitFormData,
     });
 
-    // Re-render the hook to apply the new mocks
-    const { result: reRenderedResult } = renderHook(() => useAppraisalForm());
+    // Render the hook with the mocked dependencies
+    const { result } = renderHook(() => useAppraisalForm());
 
-    await act(async () => {
-      // Pass a mock event object
-      await reRenderedResult.current.submitFormData(); // Remove the incorrect argument
+    // Set form data to be valid for submission
+    act(() => {
+        result.current.setFormData({
+            department: 'Dept', city: 'City', address: 'Address', area: 100,
+            stratum: '3', adminFee: 100, expectedValue: 1000, propertyType: 'House',
+            materialQualityEntries: []
+        });
     });
 
-    expect(validateFormSpy).toHaveBeenCalled();
+    await act(async () => {
+      await result.current.submitFormData();
+    });
+
+    // Verify that submitFormData was called
+    // We cannot directly verify that validateForm was called without spying on it,
+    // but if submitFormData is called, it implies validation passed.
     expect(mockSubmitFormData).toHaveBeenCalled();
-    expect(reRenderedResult.current.isSubmitting).toBe(false); // Should be false after submission
-    expect(reRenderedResult.current.errors.submit).toBeUndefined(); // No submit error on success
+    expect(result.current.isSubmitting).toBe(false); // Should be false after submission
+    expect(result.current.errors.submit).toBeUndefined(); // No submit error on success
   });
 
   test('should call validateForm but not submitFormData on handleSubmit if form is invalid', async () => {
-    const { result } = renderHook(() => useAppraisalForm());
-
-    // Mock validateForm to return false for this test
-    const validateFormSpy = jest.spyOn(result.current as any, 'validateForm').mockReturnValue(false);
-
     const mockSubmitFormData = jest.fn();
     mockUseAppraisalSubmission.mockReturnValue({
       submitFormData: mockSubmitFormData,
     });
 
-     // Re-render the hook to apply the new mocks
-     const { result: reRenderedResult } = renderHook(() => useAppraisalForm());
+    // Render the hook with the mocked dependencies
+    const { result } = renderHook(() => useAppraisalForm());
+
+    // Set form data to be invalid for submission (e.g., missing required fields)
+    act(() => {
+        result.current.setFormData({
+            ...initialFormData, // Use initialFormData which has empty required fields
+            // Image validation is handled by the useImageHandler mock, not by setting formData
+        });
+    });
 
 
     await act(async () => {
        // Pass a mock event object
-      await reRenderedResult.current.submitFormData(); // Remove the incorrect argument
+      await result.current.submitFormData(); // Remove the incorrect argument
     });
 
-    expect(validateFormSpy).toHaveBeenCalled();
-    expect(mockSubmitFormData).not.toHaveBeenCalled();
-    expect(reRenderedResult.current.isSubmitting).toBe(false); // Should be false if not submitting
+    // Wait for potential state updates after submission attempt
+    await waitFor(() => {
+        // Verify that submitFormData was NOT called
+        // We cannot directly verify that validateForm was called without spying on it,
+        // but if submitFormData is NOT called, it implies validation failed.
+
+        // Add assertions to check the errors state after submission attempt
+        expect(result.current.errors.department).toBe('Seleccione un departamento'); // Check a specific Zod error
+        expect(result.current.errors.images).toBe('Cargue al menos una imagen'); // Check the image error
+
+        expect(mockSubmitFormData).not.toHaveBeenCalled();
+        expect(result.current.isSubmitting).toBe(false);
+    });
   });
 
   test('should set submit error if submitFormData throws an error', async () => {
-    const { result } = renderHook(() => useAppraisalForm());
-
-    // Mock validateForm to return true
-    jest.spyOn(result.current as any, 'validateForm').mockReturnValue(true);
-
-    // Mock child hook return values for this test
+    // Mock child hook return values for this test to simulate a valid state
     mockUseImageHandler.mockReturnValue({
       images: ['image1.jpg'], // Simulate having an image for validation
       imageFiles: [new File(['dummy'], 'image1.jpg', { type: 'image/jpeg' })],
@@ -241,29 +269,41 @@ describe('useAppraisalForm', () => {
       submitFormData: mockSubmitFormData,
     });
 
-     // Re-render the hook to apply the new mocks
-     const { result: reRenderedResult } = renderHook(() => useAppraisalForm());
+    // Render the hook with the mocked dependencies
+    const { result } = renderHook(() => useAppraisalForm());
+
+    // Set form data to be valid for submission
+    act(() => {
+        result.current.setFormData({
+            department: 'Dept', city: 'City', address: 'Address', area: 100,
+            stratum: '3', adminFee: 100, expectedValue: 1000, propertyType: 'House',
+            materialQualityEntries: []
+        });
+    });
 
 
     await act(async () => {
        // Pass a mock event object
-      await reRenderedResult.current.submitFormData(); // Remove the incorrect argument
+      await result.current.submitFormData(); // Remove the incorrect argument
     });
 
     expect(mockSubmitFormData).toHaveBeenCalled();
-    expect(reRenderedResult.current.isSubmitting).toBe(false);
-    expect(reRenderedResult.current.errors.submit).toContain('Error al enviar el formulario.');
-    expect(reRenderedResult.current.errors.submit).toContain(submissionError.message);
+    expect(result.current.isSubmitting).toBe(false);
+    expect(result.current.errors.submit).toContain('Error al enviar el formulario.');
+    expect(result.current.errors.submit).toContain(submissionError.message);
   });
 
   // Note: Testing validateForm directly is complex due to its dependencies on formData,
   // materialQualityEntries, and imageFiles. It's often more effective to test the
   // overall handleSubmit flow and rely on Zod's own tests for schema validation.
   // However, we can add basic tests for image validation within validateForm.
-  test('validateForm should add image error if no images are uploaded', () => {
-    const { result } = renderHook(() => useAppraisalForm());
+  test('handleSubmit should add image errors based on useImageHandler state', async () => {
+    const mockSubmitFormData = jest.fn();
+    mockUseAppraisalSubmission.mockReturnValue({
+      submitFormData: mockSubmitFormData,
+    });
 
-    // Mock child hook return values for this test
+    // Test case 1: No images uploaded
     mockUseImageHandler.mockReturnValue({
       images: [], // No images
       imageFiles: [],
@@ -272,87 +312,61 @@ describe('useAppraisalForm', () => {
       removeImage: jest.fn(),
       clearImageErrors: jest.fn(),
     });
-
-    // Mock Zod validation to pass for this test
-    const safeParseSpy = jest.spyOn(result.current as any, 'appraisalFormSchema').mockReturnValue({ success: true });
-
-     // Re-render the hook to apply the new mocks
-     const { result: reRenderedResult } = renderHook(() => useAppraisalForm());
-
-
-    let isValid = false;
-    act(() => {
-      isValid = (reRenderedResult.current as any).validateForm();
+    const { result: resultNoImages } = renderHook(() => useAppraisalForm());
+     act(() => { // Set valid form data except for images
+        resultNoImages.current.setFormData({
+            department: 'Dept', city: 'City', address: 'Address', area: 100,
+            stratum: '3', adminFee: 100, expectedValue: 1000, propertyType: 'House',
+            materialQualityEntries: []
+        });
     });
+    await act(async () => { await resultNoImages.current.submitFormData(); });
+    expect(resultNoImages.current.errors.images).toBe("Cargue al menos una imagen");
+    expect(mockSubmitFormData).not.toHaveBeenCalled(); // Submission should fail
 
-    expect(isValid).toBe(false);
-    expect(reRenderedResult.current.errors.images).toBe("Cargue al menos una imagen");
-    expect(safeParseSpy).toHaveBeenCalled();
-  });
-
-  test('validateForm should add image error if too many images are uploaded', () => {
-    const { result } = renderHook(() => useAppraisalForm());
-
-    // Simulate having more than 30 images
+    // Test case 2: Too many images uploaded
     const manyImages = Array(31).fill('image.jpg');
     const manyImageFiles = Array(31).fill(new File(['dummy'], 'image.jpg', { type: 'image/jpeg' }));
-
-    // Mock child hook return values for this test
     mockUseImageHandler.mockReturnValue({
-      images: manyImages,
+      images: manyImages, // Too many images
       imageFiles: manyImageFiles,
       imageErrors: null,
       handleImageUpload: jest.fn(),
       removeImage: jest.fn(),
       clearImageErrors: jest.fn(),
     });
-
-     // Mock Zod validation to pass for this test
-     const safeParseSpy = jest.spyOn(result.current as any, 'appraisalFormSchema').mockReturnValue({ success: true });
-
-     // Re-render the hook to apply the new mocks
-     const { result: reRenderedResult } = renderHook(() => useAppraisalForm());
-
-
-    let isValid = false;
-    act(() => {
-      isValid = (reRenderedResult.current as any).validateForm();
+    const { result: resultTooManyImages } = renderHook(() => useAppraisalForm());
+     act(() => { // Set valid form data except for images
+        resultTooManyImages.current.setFormData({
+            department: 'Dept', city: 'City', address: 'Address', area: 100,
+            stratum: '3', adminFee: 100, expectedValue: 1000, propertyType: 'House',
+            materialQualityEntries: []
+        });
     });
+    await act(async () => { await resultTooManyImages.current.submitFormData(); });
+    expect(resultTooManyImages.current.errors.images).toBe("Puede cargar un máximo de 30 imágenes");
+    expect(mockSubmitFormData).not.toHaveBeenCalled(); // Submission should fail
 
-    expect(isValid).toBe(false);
-    expect(reRenderedResult.current.errors.images).toBe("Puede cargar un máximo de 30 imágenes");
-    expect(safeParseSpy).toHaveBeenCalled();
-  });
-
-  test('validateForm should include image errors from useImageHandler', () => {
-    const { result } = renderHook(() => useAppraisalForm());
-
+    // Test case 3: Image error from useImageHandler
     const imageHookError = "Error uploading image";
-
-    // Mock child hook return values for this test
     mockUseImageHandler.mockReturnValue({
-      images: ['image1.jpg'],
+      images: ['image1.jpg'], // Some images, but with an error
       imageFiles: [new File(['dummy'], 'image1.jpg', { type: 'image/jpeg' })],
-      imageErrors: imageHookError, // Simulate error from image handler
+      imageErrors: imageHookError,
       handleImageUpload: jest.fn(),
       removeImage: jest.fn(),
       clearImageErrors: jest.fn(),
     });
-
-     // Mock Zod validation to pass for this test
-     const safeParseSpy = jest.spyOn(result.current as any, 'appraisalFormSchema').mockReturnValue({ success: true });
-
-     // Re-render the hook to apply the new mocks
-     const { result: reRenderedResult } = renderHook(() => useAppraisalForm());
-
-
-    let isValid = false;
-    act(() => {
-      isValid = (reRenderedResult.current as any).validateForm();
+     const { result: resultHookError } = renderHook(() => useAppraisalForm());
+      act(() => { // Set valid form data except for images
+        resultHookError.current.setFormData({
+            department: 'Dept', city: 'City', address: 'Address', area: 100,
+            stratum: '3', adminFee: 100, expectedValue: 1000, propertyType: 'House',
+            materialQualityEntries: []
+        });
     });
-
-    expect(isValid).toBe(false); // Should be false due to image error
-    expect(reRenderedResult.current.errors.images).toBe(imageHookError);
-    expect(safeParseSpy).toHaveBeenCalled();
+    await act(async () => { await resultHookError.current.submitFormData(); });
+    expect(resultHookError.current.errors.images).toBe(imageHookError);
+    expect(mockSubmitFormData).not.toHaveBeenCalled(); // Submission should fail
   });
 });

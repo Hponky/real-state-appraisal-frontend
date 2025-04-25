@@ -54,29 +54,29 @@ export default function Results() {
   const router = useRouter();
 
   useEffect(() => {
-    const saveResults = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+    // const saveResults = async () => {
+    //   const { data: { user } } = await supabase.auth.getUser();
       
-      if (user) {
-        const { error } = await supabase
-          .from('appraisals')
-          .insert([
-            {
-              user_id: user.id,
-              technical_evaluation: mockData.technicalEvaluation,
-              economic_evaluation: mockData.economicEvaluation,
-              legal_evaluation: mockData.legalEvaluation,
-              created_at: new Date().toISOString(),
-            }
-          ]);
+    //   if (user) {
+    //     const { error } = await supabase
+    //       .from('appraisals')
+    //       .insert([
+    //         {
+    //           user_id: user.id,
+    //           technical_evaluation: mockData.technicalEvaluation,
+    //           economic_evaluation: mockData.economicEvaluation,
+    //           legal_evaluation: mockData.legalEvaluation,
+    //           created_at: new Date().toISOString(),
+    //         }
+    //       ]);
 
-        if (error) {
-          console.error('Error saving results:', error);
-        }
-      }
-    };
+    //     if (error) {
+    //       console.error('Error saving results:', error);
+    //     }
+    //   }
+    // };
 
-    saveResults();
+    // saveResults();
   }, []);
 
   const handleDownloadPDF = () => {

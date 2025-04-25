@@ -8,9 +8,9 @@ import { MaterialQualityEntry } from '../useMaterialQualityEntries';
 // Mock dependencies
 jest.mock('../../services/appraisalApiService');
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({
+  useRouter: jest.fn(() => ({
     push: jest.fn(),
-  }),
+  })),
 }));
 
 const mockAppraisalApiService = appraisalApiService as jest.Mocked<typeof appraisalApiService>;
@@ -78,6 +78,9 @@ describe('useAppraisalSubmission', () => {
   });
 
   test('should set submit error and setIsSubmitting(false) on submission failure', async () => {
+    // Mock console.error for this specific test to avoid noise in test output
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
     const submissionError = new Error('API submission failed');
     mockAppraisalApiService.submitAppraisal.mockRejectedValue(submissionError); // Simulate failure
 
@@ -110,6 +113,9 @@ describe('useAppraisalSubmission', () => {
     expect(setErrorCall).toBeDefined();
 
     expect(mockSetIsSubmitting).toHaveBeenCalledWith(false);
+
+    // Restore console.error
+    consoleErrorSpy.mockRestore();
   });
 
   test('should handle empty materialQualityEntries', async () => {
@@ -175,7 +181,136 @@ describe('useAppraisalSubmission', () => {
     expect(mockPush).toHaveBeenCalledWith("/appraisal/results");
   });
 
-  // Add tests for image conversion to base64 if needed, but Promise.all and FileReader
-  // are standard browser APIs and typically don't require extensive unit testing
-  // unless there's custom logic involved.
+  test('should convert image files to base64 and append to formData', async () => {
+    mockAppraisalApiService.submitAppraisal.mockResolvedValue(undefined);
+
+    // Mock FileReader
+    const mockReadAsDataURL = jest.fn();
+    const mockFileReader = {
+      onloadend: null as any,
+      onerror: null as any,
+      readAsDataURL: mockReadAsDataURL,
+    };
+    jest.spyOn(global, 'FileReader').mockImplementation(() => mockFileReader as any);
+
+    const file1 = new File(['dummy1'], 'image1.jpg', { type: 'image/jpeg' });
+    const file2 = new File(['dummy2'], 'image2.png', { type: 'image/png' });
+    const mockImageFiles: File[] = [file1, file2];
+
+    const { result } = renderHook(() => useAppraisalSubmission({
+      formData: mockFormData,
+      imageFiles: mockImageFiles,
+      materialQualityEntries: mockFormData.materialQualityEntries || [],
+      setErrors: mockSetErrors,
+      clearImageErrors: mockClearImageErrors,
+      setIsSubmitting: mockSetIsSubmitting,
+    }));
+
+    // Trigger the submission
+    act(() => {
+      result.current.submitFormData();
+    });
+
+    // Simulate FileReader loading
+    await act(async () => {
+      if (mockFileReader.onloadend) {
+        mockFileReader.onloadend({ target: { result: 'data:image/jpeg;base64,encoded1' } } as any);
+      }
+    });
+     await act(async () => {
+      if (mockFileReader.onloadend) {
+        mockFileReader.onloadend({ target: { result: 'data:image/png;base64,encoded2' } } as any);
+      }
+    });
+
+
+    // Wait for the submission promise to resolve
+    await act(async () => {
+        // No explicit await needed here as the previous act blocks until promises resolve
+    });
+
+
+    // Verify FileReader was called for each file
+    expect(mockReadAsDataURL).toHaveBeenCalledTimes(2);
+    expect(mockReadAsDataURL).toHaveBeenCalledWith(file1);
+    expect(mockReadAsDataURL).toHaveBeenCalledWith(file2);
+
+    // Verify submitAppraisal was called with FormData containing base64 images
+    expect(mockAppraisalApiService.submitAppraisal).toHaveBeenCalledTimes(1);
+    const formDataArg = mockAppraisalApiService.submitAppraisal.mock.calls[0][0];
+    expect(formDataArg instanceof FormData).toBe(true);
+
+    const imagesData = JSON.parse(formDataArg.get('images') as string);
+    expect(imagesData).toEqual([
+      'data:image/jpeg;base64,encoded1',
+      'data:image/png;base64,encoded2',
+    ]);
+
+    expect(mockPush).toHaveBeenCalledWith("/appraisal/results");
+  });
+
+  test('should set image error if FileReader fails', async () => {
+    // Mock console.error for this specific test to avoid noise in test output
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    mockAppraisalApiService.submitAppraisal.mockResolvedValue(undefined); // Submission would succeed if not for image error
+
+    // Mock FileReader to simulate an error
+    const mockReadAsDataURL = jest.fn();
+    const mockFileReader = {
+      onloadend: null as any,
+      onerror: null as any,
+      readAsDataURL: mockReadAsDataURL,
+    };
+    jest.spyOn(global, 'FileReader').mockImplementation(() => mockFileReader as any);
+
+    const file1 = new File(['dummy1'], 'image1.jpg', { type: 'image/jpeg' });
+    const mockImageFiles: File[] = [file1];
+
+    const { result } = renderHook(() => useAppraisalSubmission({
+      formData: mockFormData,
+      imageFiles: mockImageFiles,
+      materialQualityEntries: mockFormData.materialQualityEntries || [],
+      setErrors: mockSetErrors,
+      clearImageErrors: mockClearImageErrors,
+      setIsSubmitting: mockSetIsSubmitting,
+    }));
+
+    // Trigger the submission
+    act(() => {
+      result.current.submitFormData();
+    });
+
+    // Simulate FileReader error
+    const errorEvent = new ErrorEvent('error', { message: 'Failed to read file' });
+    await act(async () => {
+      if (mockFileReader.onerror) {
+        mockFileReader.onerror(errorEvent);
+      }
+    });
+
+    // Wait for potential state updates
+     await act(async () => {
+        // No explicit await needed here
+    });
+
+
+    // Verify setErrors was called with an image error
+    expect(mockSetErrors).toHaveBeenCalledWith(expect.any(Function));
+    const setErrorCall = mockSetErrors.mock.calls.find(call => {
+        const updateFn = call[0];
+        const prevState = {}; // Simulate previous state
+        const newState = updateFn(prevState);
+        return newState.images && newState.images.includes('Error al leer el archivo de imagen: Failed to read file');
+    });
+    expect(setErrorCall).toBeDefined();
+
+    // Verify submitAppraisal was NOT called
+    expect(mockAppraisalApiService.submitAppraisal).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockSetIsSubmitting).toHaveBeenCalledWith(false);
+
+    // Restore console.error
+    consoleErrorSpy.mockRestore();
+  });
 });

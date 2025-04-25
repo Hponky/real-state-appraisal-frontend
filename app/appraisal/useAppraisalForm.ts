@@ -25,7 +25,7 @@ export function useAppraisalForm() {
   const handleNumericChange = useCallback((field: keyof AppraisalFormData, value: string) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value === '' ? null : Number(value)
+      [field]: value === '' ? '' : Number(value)
     }));
   }, []);
   // const [images, setImages] = useState<string[]>([]); // Removed: Handled by useImageHandler

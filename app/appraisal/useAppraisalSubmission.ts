@@ -66,11 +66,14 @@ export function useAppraisalSubmission({
             base64Images.forEach((base64, index) => {
                 formDataToSend.append(`imagen_base64_${index}`, base64);
             });
-             await appraisalApiService.submitAppraisal(formDataToSend); // Use the service
+             console.log("Attempting to submit appraisal data...");
+             const response = await appraisalApiService.submitAppraisal(formDataToSend); // Use the service
+             console.log("Appraisal submission successful, response:", response);
 
-             router.push("/appraisal/results");
+             window.location.href = "/appraisal/results";
 
         } catch (error) {
+            console.error("Error during form submission process:", error);
             console.error("Error submitting form:", error);
             setErrors(prev => ({ ...prev, submit: `Error al enviar el formulario. ${error instanceof Error ? error.message : 'Por favor, intente de nuevo.'}` }));
         } finally {

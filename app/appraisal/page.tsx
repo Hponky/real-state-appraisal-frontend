@@ -68,7 +68,7 @@ export default function AppraisalForm() {
               </div>
             )}
 
-            <form onSubmit={submitFormData} className="space-y-6" encType="multipart/form-data">
+            <form onSubmit={submitFormData} className="space-y-6" encType="multipart/form-data" method="POST">
               <LocationFields
                   formData={formData}
                   setFormData={setFormData}

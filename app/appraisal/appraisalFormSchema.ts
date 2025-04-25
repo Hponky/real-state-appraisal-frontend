@@ -22,7 +22,7 @@ export const appraisalFormSchema = z.object({
     z.nullable(z.number().nonnegative("Ingrese una administración numérica no negativa")).optional()
   ),
   expectedValue: z.preprocess( // Use preprocess to handle empty string or non-numeric input
-    (val) => (val === '' ? null : Number(val)),
+    (val) => (val === '' ? undefined : Number(val)),
     z.number({
         required_error: "Ingrese el valor esperado",
         invalid_type_error: "Ingrese un valor numérico para el valor esperado"
