@@ -9,7 +9,7 @@ const nextConfig = {
     return [
       {
         source: '/api/n8n/:path*',
-        destination: 'http://localhost:5678/webhook-test/recepcion-datos-inmueble/',
+        destination: 'http://localhost:5678/webhook-test/recepcion-datos-inmueble/:path*',
       },
     ];
   },
