@@ -10,9 +10,10 @@ export const appraisalApiService = {
                 formData: formData,
             };
 
-            console.log("Calling n8n webhook with URL:", 'http://localhost:5678/webhook-test/recepcion-datos-inmueble'); // Log antes de fetch
+            const n8nWebhookUrl = '/api/n8n'; // Usar la ruta local proxied
+            console.log("Calling n8n webhook with URL:", n8nWebhookUrl); // Log antes de fetch
             try {
-                const response = await fetch('http://localhost:5678/webhook-test/recepcion-datos-inmueble', {
+                const response = await fetch(n8nWebhookUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json', // Enviar como JSON
@@ -23,12 +24,15 @@ export const appraisalApiService = {
                 console.log("n8n webhook fetch response received.", { status: response.status, ok: response.ok }); // Log después de fetch
 
                 if (!response.ok) {
-                let errorData = 'Unknown server error';
+                const errorBody = await response.text(); // Leer el cuerpo una sola vez como texto
+                let errorData = errorBody || 'Unknown server error';
                 try {
-                    const jsonError = await response.json();
+                    // Intentar parsear como JSON si parece JSON
+                    const jsonError = JSON.parse(errorBody);
                     errorData = jsonError.message || JSON.stringify(jsonError);
                 } catch (parseError) {
-                    errorData = await response.text();
+                    // Si falla el parseo, usar el texto crudo
+                    // errorData ya contiene el texto crudo
                 }
                 console.error("Server response error:", response.status, errorData);
                 throw new Error(`Error ${response.status}: ${errorData}`);

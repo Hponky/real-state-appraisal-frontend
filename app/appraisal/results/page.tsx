@@ -29,7 +29,8 @@ export default function Results() {
 
         if (response.ok && result.status === 'completed') {
           // Resultados listos, establecer los datos
-          setAppraisalData(result.results); // Asumiendo que 'results' contiene los datos del peritaje
+          // Los datos relevantes están en result.results.initial_data
+          setAppraisalData(result.results);
         } else if (response.status === 202) {
           // Todavía pendiente, podrías mostrar un mensaje diferente o seguir esperando (aunque el polling se hace en la página del formulario)
           setError("Appraisal is still pending. Please wait or try refreshing.");
@@ -84,7 +85,6 @@ export default function Results() {
   }
 
 
-  // Display the raw received data
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
@@ -92,7 +92,6 @@ export default function Results() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Volver al Inicio
         </Link>
-        {/* Historial button remains, but download button is removed as PDF generation is removed */}
         <div className="space-x-4">
           <Link href="/history">
             <Button variant="outline" className="inline-flex items-center">
@@ -109,17 +108,76 @@ export default function Results() {
         transition={{ duration: 0.5 }}
       >
         <h1 className="text-3xl font-bold mb-8">Resultados del Peritaje</h1>
-        {/* Mostrar los datos crudos recibidos de la API */}
-        <Card className="p-6">
-          <h2 className="text-2xl font-semibold mb-4">Datos del Peritaje</h2>
-          <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-sm">
-            {JSON.stringify(appraisalData, null, 2)}
-          </pre>
+
+        {/* Mostrar los datos formateados */}
+        <Card className="p-6 mb-6">
+          <h2 className="text-2xl font-semibold mb-4">Información General</h2>
+          {appraisalData.initial_data && (
+            <>
+              <p><strong>ID Solicitud:</strong> {appraisalData.requestId}</p>
+              <p><strong>Ciudad:</strong> {appraisalData.initial_data.ciudad}</p>
+              <p><strong>Tipo de Inmueble:</strong> {appraisalData.initial_data.tipo_inmueble}</p>
+              <p><strong>Estrato:</strong> {appraisalData.initial_data.estrato}</p>
+              <p><strong>Área (m²):</strong> {appraisalData.initial_data.area_usuario_m2}</p>
+              <p><strong>Dirección:</strong> {appraisalData.initial_data.direccion}</p>
+            </>
+          )}
         </Card>
 
-        {/* Aquí podrías añadir lógica para formatear y mostrar los datos de appraisalData
-             en lugar de solo el JSON crudo, basándote en la estructura de los resultados
-             que n8n guarda en Supabase. */}
+        {appraisalData.initial_data?.analisis_mercado && (
+          <Card className="p-6 mb-6">
+            <h2 className="text-2xl font-semibold mb-4">Análisis de Mercado</h2>
+            {appraisalData.initial_data.analisis_mercado.rango_mercado_cop && (
+              <p><strong>Rango de Mercado (COP):</strong> {appraisalData.initial_data.analisis_mercado.rango_mercado_cop.min} - {appraisalData.initial_data.analisis_mercado.rango_mercado_cop.max}</p>
+            )}
+            {appraisalData.initial_data.analisis_mercado.resumen_mercado && (
+              <p><strong>Resumen:</strong> {appraisalData.initial_data.analisis_mercado.resumen_mercado}</p>
+            )}
+          </Card>
+        )}
+
+        {appraisalData.initial_data?.evaluacion_tecnica?.observaciones_tecnicas_clave && appraisalData.initial_data.evaluacion_tecnica.observaciones_tecnicas_clave.length > 0 && (
+          <Card className="p-6 mb-6">
+            <h2 className="text-2xl font-semibold mb-4">Evaluación Técnica</h2>
+            <h3 className="text-xl font-medium mb-2">Observaciones Clave:</h3>
+            <ul className="list-disc list-inside">
+              {appraisalData.initial_data.evaluacion_tecnica.observaciones_tecnicas_clave.map((obs: string, index: number) => (
+                <li key={index}>{obs}</li>
+              ))}
+            </ul>
+          </Card>
+        )}
+
+        {appraisalData.initial_data?.valoracion_actual && (
+           <Card className="p-6 mb-6">
+             <h2 className="text-2xl font-semibold mb-4">Valoración Actual</h2>
+             {appraisalData.initial_data.valoracion_actual.estimacion_arriendo_actual_cop && (
+               <p><strong>Estimación Arriendo Actual (COP):</strong> {appraisalData.initial_data.valoracion_actual.estimacion_arriendo_actual_cop}</p>
+             )}
+           </Card>
+        )}
+
+        {appraisalData.initial_data?.potencial_valorizacion && (
+           <Card className="p-6 mb-6">
+             <h2 className="text-2xl font-semibold mb-4">Potencial de Valorización</h2>
+             {appraisalData.initial_data.potencial_valorizacion.arriendo_potencial_total_estimado_cop && (
+               <p><strong>Arriendo Potencial Estimado (COP):</strong> {appraisalData.initial_data.potencial_valorizacion.arriendo_potencial_total_estimado_cop}</p>
+             )}
+             {appraisalData.initial_data.potencial_valorizacion.recomendaciones_valorizacion && appraisalData.initial_data.potencial_valorizacion.recomendaciones_valorizacion.length > 0 && (
+               <>
+                 <h3 className="text-xl font-medium mb-2">Recomendaciones:</h3>
+                 <ul className="list-disc list-inside">
+                   {appraisalData.initial_data.potencial_valorizacion.recomendaciones_valorizacion.map((rec: any, index: number) => (
+                     <li key={index}>
+                       {rec.recomendacion} (Aumento Potencial Estimado: {rec.aumento_potencial_estimado_cop} COP)
+                     </li>
+                   ))}
+                 </ul>
+               </>
+             )}
+           </Card>
+        )}
+
 
       </motion.div>
     </div>
