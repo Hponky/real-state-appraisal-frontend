@@ -1,117 +1,90 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, Download, History } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { jsPDF } from "jspdf";
-import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
+import { ArrowLeft, History } from "lucide-react";
 import { motion } from "framer-motion";
 
-const mockData = {
-  technicalEvaluation: {
-    condition: "Bueno",
-    improvements: [
-      "Actualización de acabados en baños",
-      "Mantenimiento de pisos",
-      "Pintura general",
-    ],
-    valueIncrease: 15,
-  },
-  economicEvaluation: {
-    currentValue: 350000000,
-    projectedValue: 402500000,
-    monthlyData: [
-      { month: "Ene", value: 350000000 },
-      { month: "Feb", value: 355000000 },
-      { month: "Mar", value: 365000000 },
-      { month: "Abr", value: 375000000 },
-      { month: "May", value: 385000000 },
-      { month: "Jun", value: 402500000 },
-    ],
-  },
-  legalEvaluation: {
-    risks: ["Bajo riesgo de normativa urbanística"],
-    recommendations: [
-      "Actualizar certificado de libertad",
-      "Verificar paz y salvo de impuestos",
-    ],
-  },
-};
-
 export default function Results() {
-  const router = useRouter();
+  const [appraisalData, setAppraisalData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // const saveResults = async () => {
-    //   const { data: { user } } = await supabase.auth.getUser();
-      
-    //   if (user) {
-    //     const { error } = await supabase
-    //       .from('appraisals')
-    //       .insert([
-    //         {
-    //           user_id: user.id,
-    //           technical_evaluation: mockData.technicalEvaluation,
-    //           economic_evaluation: mockData.economicEvaluation,
-    //           legal_evaluation: mockData.legalEvaluation,
-    //           created_at: new Date().toISOString(),
-    //         }
-    //       ]);
+    const params = new URLSearchParams(window.location.search);
+    const requestId = params.get('id'); // Leer el ID de la URL
 
-    //     if (error) {
-    //       console.error('Error saving results:', error);
-    //     }
-    //   }
-    // };
+    if (!requestId) {
+      setError("No appraisal request ID found in the URL.");
+      setLoading(false);
+      return;
+    }
 
-    // saveResults();
-  }, []);
+    const fetchResults = async () => {
+      try {
+        const response = await fetch(`/api/appraisal/status?id=${requestId}`);
+        const result = await response.json();
 
-  const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    
-    // Add content to PDF
-    doc.setFontSize(20);
-    doc.text("Resultados del Peritaje", 20, 20);
-    
-    doc.setFontSize(16);
-    doc.text("Evaluación Técnica", 20, 40);
-    doc.setFontSize(12);
-    doc.text(`Estado: ${mockData.technicalEvaluation.condition}`, 20, 50);
-    doc.text("Mejoras Recomendadas:", 20, 60);
-    mockData.technicalEvaluation.improvements.forEach((improvement, index) => {
-      doc.text(`- ${improvement}`, 25, 70 + (index * 10));
-    });
-    
-    doc.setFontSize(16);
-    doc.text("Evaluación Económica", 20, 110);
-    doc.setFontSize(12);
-    doc.text(`Valor Actual: $${mockData.economicEvaluation.currentValue.toLocaleString()}`, 20, 120);
-    doc.text(`Valor Proyectado: $${mockData.economicEvaluation.projectedValue.toLocaleString()}`, 20, 130);
-    
-    doc.setFontSize(16);
-    doc.text("Evaluación Legal", 20, 150);
-    doc.setFontSize(12);
-    doc.text("Riesgos:", 20, 160);
-    mockData.legalEvaluation.risks.forEach((risk, index) => {
-      doc.text(`- ${risk}`, 25, 170 + (index * 10));
-    });
-    
-    doc.save("peritaje-inmobiliario.pdf");
-  };
+        if (response.ok && result.status === 'completed') {
+          // Resultados listos, establecer los datos
+          setAppraisalData(result.results); // Asumiendo que 'results' contiene los datos del peritaje
+        } else if (response.status === 202) {
+          // Todavía pendiente, podrías mostrar un mensaje diferente o seguir esperando (aunque el polling se hace en la página del formulario)
+          setError("Appraisal is still pending. Please wait or try refreshing.");
+        } else {
+          // Error o no encontrado
+          setError(result.error || 'Failed to fetch appraisal results.');
+          console.error("Error fetching appraisal results:", result);
+        }
+      } catch (error) {
+        console.error("Error during fetch results:", error);
+        let errorMessage = 'Failed to load appraisal results.';
+        if (error instanceof Error) errorMessage = error.message;
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchResults();
+  }, []); // Empty dependency array means this runs once on mount
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <p>Cargando resultados...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center text-red-500">
+        <p>Error al cargar los resultados: {error}</p>
+        <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-primary mt-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Volver al Inicio
+        </Link>
+      </div>
+    );
+  }
+
+  if (!appraisalData) {
+     return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <p>No se encontraron datos de peritaje.</p>
+        <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-primary mt-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Volver al Inicio
+        </Link>
+      </div>
+    );
+  }
+
+
+  // Display the raw received data
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
@@ -119,6 +92,7 @@ export default function Results() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Volver al Inicio
         </Link>
+        {/* Historial button remains, but download button is removed as PDF generation is removed */}
         <div className="space-x-4">
           <Link href="/history">
             <Button variant="outline" className="inline-flex items-center">
@@ -126,10 +100,6 @@ export default function Results() {
               Historial
             </Button>
           </Link>
-          <Button onClick={handleDownloadPDF} className="inline-flex items-center">
-            <Download className="w-4 h-4 mr-2" />
-            Descargar PDF
-          </Button>
         </div>
       </div>
 
@@ -139,83 +109,18 @@ export default function Results() {
         transition={{ duration: 0.5 }}
       >
         <h1 className="text-3xl font-bold mb-8">Resultados del Peritaje</h1>
+        {/* Mostrar los datos crudos recibidos de la API */}
+        <Card className="p-6">
+          <h2 className="text-2xl font-semibold mb-4">Datos del Peritaje</h2>
+          <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-sm">
+            {JSON.stringify(appraisalData, null, 2)}
+          </pre>
+        </Card>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Evaluación Técnica */}
-          <Card className="p-6">
-            <h2 className="text-2xl font-semibold mb-4">Evaluación Técnica</h2>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-medium">Estado General</h3>
-                <p className="text-muted-foreground">{mockData.technicalEvaluation.condition}</p>
-              </div>
-              <div>
-                <h3 className="font-medium">Mejoras Recomendadas</h3>
-                <ul className="list-disc list-inside text-muted-foreground">
-                  {mockData.technicalEvaluation.improvements.map((improvement, index) => (
-                    <li key={index}>{improvement}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-medium">Potencial de Valorización</h3>
-                <p className="text-muted-foreground">{mockData.technicalEvaluation.valueIncrease}%</p>
-              </div>
-            </div>
-          </Card>
+        {/* Aquí podrías añadir lógica para formatear y mostrar los datos de appraisalData
+             en lugar de solo el JSON crudo, basándote en la estructura de los resultados
+             que n8n guarda en Supabase. */}
 
-          {/* Evaluación Económica */}
-          <Card className="p-6">
-            <h2 className="text-2xl font-semibold mb-4">Evaluación Económica</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={mockData.economicEvaluation.monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-4">
-              <p className="text-sm text-muted-foreground">
-                Valor Actual: ${mockData.economicEvaluation.currentValue.toLocaleString()}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Valor Proyectado: ${mockData.economicEvaluation.projectedValue.toLocaleString()}
-              </p>
-            </div>
-          </Card>
-
-          {/* Evaluación Legal */}
-          <Card className="p-6 md:col-span-2">
-            <h2 className="text-2xl font-semibold mb-4">Evaluación Legal</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-medium mb-2">Riesgos Identificados</h3>
-                <ul className="list-disc list-inside text-muted-foreground">
-                  {mockData.legalEvaluation.risks.map((risk, index) => (
-                    <li key={index}>{risk}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-medium mb-2">Recomendaciones Legales</h3>
-                <ul className="list-disc list-inside text-muted-foreground">
-                  {mockData.legalEvaluation.recommendations.map((rec, index) => (
-                    <li key={index}>{rec}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </Card>
-        </div>
       </motion.div>
     </div>
   );
