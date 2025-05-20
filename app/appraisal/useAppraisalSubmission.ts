@@ -6,6 +6,7 @@ import { appraisalApiService } from "../services/appraisalApiService";
 import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '@supabase/supabase-js';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UseAppraisalSubmissionProps {
     formData: AppraisalFormData;
@@ -27,7 +28,11 @@ export function useAppraisalSubmission({
     const router = useRouter();
     const [requestId, setRequestId] = useState<string | null>(null); // Estado para guardar el requestId
 
-    const submitFormData = useCallback(async () => {
+    // Usar el hook useAuth para obtener el usuario y el estado de carga en la raíz del hook
+    const { user, isLoading } = useAuth();
+
+    const submitFormData = useCallback(async (event: React.FormEvent) => {
+        event.preventDefault(); // Prevenir el comportamiento por defecto del formulario
         console.log("Iniciando submitFormData...");
         clearImageErrors();
         setIsSubmitting(true);
@@ -37,74 +42,29 @@ export function useAppraisalSubmission({
             return newErrors;
         });
 
+        // Esperar a que el estado de autenticación se cargue antes de proceder
+        if (isLoading) {
+            console.log("Auth state is loading, waiting...");
+            setIsSubmitting(false); // Asegurarse de que el estado de submitting sea falso mientras carga auth
+            return; // Detener la ejecución hasta que auth state esté listo
+        }
+
+        // Si no hay usuario después de que el estado de auth se cargó, algo salió mal
+        if (!user) {
+             console.error('No user available after auth state loaded.');
+             setErrors(prev => ({ ...prev, submit: 'No se pudo obtener información del usuario después de cargar el estado de autenticación.' }));
+             setIsSubmitting(false);
+             return;
+        }
+
         const newRequestId = uuidv4();
         setRequestId(newRequestId); // Guardar el requestId en el estado
 
         try {
-            // Obtener el usuario actual
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-            let user: User | null = session?.user ?? null; // Inicializar como null y usar nullish coalescing
-
-            if (sessionError) {
-                 console.error('Error fetching session:', sessionError);
-                 // Si hay un error al obtener la sesión, user será null.
-                 // Continuamos para intentar el inicio de sesión anónimo.
-            }
-
-            // Si no hay usuario autenticado, crear uno anónimo temporal
-            if (!user) {
-                console.log("No authenticated user found, attempting anonymous sign-in.");
-                try {
-                    console.log("Attempting to sign in anonymously...");
-                    const anonymousUserResponse = await supabase.auth.signInAnonymously();
-                    console.log("Anonymous user response:", anonymousUserResponse);
-                    if (anonymousUserResponse.error) {
-                        console.error('Error creating anonymous user:', anonymousUserResponse.error);
-                        setErrors(prev => ({ ...prev, submit: `Error al iniciar sesión anónima: ${anonymousUserResponse.error.message}` }));
-                        setIsSubmitting(false);
-                        return; // Detener el proceso si falla la creación del usuario anónimo
-                    }
-                    user = anonymousUserResponse.data.user; // Acceder a user desde data
-                } catch (anonError) {
-                    console.error('Caught error during anonymous sign-in:', anonError);
-                    setErrors(prev => ({ ...prev, submit: `Error durante el inicio de sesión anónimo: ${anonError instanceof Error ? anonError.message : 'Error desconocido'}` }));
-                    setIsSubmitting(false);
-                    return; // Detener el proceso si falla la creación del usuario anónimo
-                }
-            }
-
-            console.log("DEBUG: Valor final de user después del intento anónimo:", user);
-            if (!user) {
-                 console.error('No user available after auth attempt.');
-                 setErrors(prev => ({ ...prev, submit: 'No se pudo obtener información del usuario.' }));
-                 setIsSubmitting(false);
-                 return;
-            }
-
-            // Insertar una entrada en la tabla 'users' si no existe (para perfiles)
-            const { error: profileInsertError } = await supabase
-                .from('users') // Asume que tu tabla de perfiles se llama 'users'
-                .insert([
-                    { id: user.id } // Usa el ID del usuario recién creado/obtenido
-                ])
-                .select() // Opcional: seleccionar los datos insertados si es necesario
-                .single() // Opcional: si esperas una sola fila insertada;
-
-            if (profileInsertError && profileInsertError.code !== '23505') { // 23505 es código para violación de unique constraint (si el perfil ya existe)
-                console.error('Error inserting into users table:', profileInsertError);
-                setErrors(prev => ({ ...prev, submit: `Error al crear perfil de usuario: ${profileInsertError.message}` }));
-                setIsSubmitting(false);
-                return;
-            } else if (profileInsertError && profileInsertError.code === '23505') {
-                 console.log('Profile for user already exists, proceeding.');
-            } else {
-                 console.log('Profile inserted successfully or already exists.');
-            }
-
-
             console.log(`Using user ID: ${user.id}`);
 
             // 1. Iniciar la creación de entrada pendiente en Supabase
+            console.log(`DEBUG: user.id antes de insertar en appraisals: ${user.id}`);
             console.log("Initiating insert pending entry into Supabase...");
             const dataToInsert = {
                 id: newRequestId,
