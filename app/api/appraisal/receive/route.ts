@@ -69,31 +69,33 @@ export async function POST(request: Request) {
 
      if (error) {
        console.error('DEBUG: Supabase Update Error:', error); // Log de error de Supabase
+       // Si hay un error de Supabase, respondemos con 500
        return NextResponse.json({ error: 'Failed to save appraisal data', details: error.message }, { status: 500 });
      }
 
-     // Verificar si se actualizó alguna fila
-     // Verificar si se actualizó alguna fila
-     if (!data) { // Cambiado de data.length === 0 a !data
-         console.warn(`DEBUG: Supabase update operation did not affect any rows for ID: ${requestId}.`); // Log de advertencia si no se actualizó ninguna fila
-         // Considerar si esto debería ser un error 404 o un 500 dependiendo de la lógica de negocio
-         return NextResponse.json({ error: 'Appraisal request not found or not updated' }, { status: 404 });
+     // Si no hay error de Supabase, la operación fue procesada.
+     // Respondemos siempre con 200 OK a n8n, ya que el frontend usa Realtime para el estado final.
+     // La verificación de si 'data' es nulo es más para logging/depuración en este endpoint.
+     if (!data) {
+         console.warn(`DEBUG: Supabase update operation did not return data for ID: ${requestId}. This might be expected if .select() was not used or if the row was not found, but no Supabase error occurred.`); // Log de advertencia si no se devolvieron datos
+     } else {
+         console.log(`DEBUG: Supabase update operation returned data for ID: ${requestId}.`); // Log si se devolvieron datos
      }
 
-     console.log("DEBUG: Supabase entry updated successfully. Responding with 200 OK."); // Log de éxito de actualización
-     console.log("DEBUG: Responding to n8n with:", { success: true, message: 'Appraisal results saved successfully', data }); // Log de la respuesta enviada a n8n
+     console.log("DEBUG: Responding to n8n with 200 OK."); // Log antes de responder
 
-     // Responder a n8n para confirmar la recepción y guardado
-    return NextResponse.json({ success: true, message: 'Appraisal results saved successfully' }, { status: 200 });
+     // Responder a n8n para confirmar la recepción y procesamiento
+     return NextResponse.json({ success: true, message: 'Appraisal results processed successfully' }, { status: 200 });
 
-  } catch (error) {
-     console.error('API Route Error after validation:', error); // Log de error en la ruta
-     let errorMessage = 'Internal Server Error';
-     if (error instanceof Error) errorMessage = error.message;
-     if (error instanceof SyntaxError) {
-       errorMessage = 'Invalid JSON received';
-       return NextResponse.json({ error: errorMessage }, { status: 400 });
-     }
-     return NextResponse.json({ error: 'Failed to process request', details: errorMessage }, { status: 500 });
-  }
+   } catch (error) {
+      console.error('API Route Error after validation:', error); // Log de error en la ruta
+      let errorMessage = 'Internal Server Error';
+      if (error instanceof Error) errorMessage = error.message;
+      if (error instanceof SyntaxError) {
+        errorMessage = 'Invalid JSON received';
+        return NextResponse.json({ error: errorMessage }, { status: 400 });
+      }
+      // Para cualquier otro error no manejado, responder con 500
+      return NextResponse.json({ error: 'Failed to process request', details: errorMessage }, { status: 500 });
+   }
 }

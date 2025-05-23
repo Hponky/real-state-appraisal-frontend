@@ -6,8 +6,8 @@ import { cookies } from 'next/headers';
 export async function GET(request: Request) {
   console.log("[API /status] Received GET request."); // Log al inicio de la función
   const { searchParams } = new URL(request.url);
-  const cookieStore = cookies(); // Obtener el almacén de cookies
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore }); // Crear cliente Supabase para Route Handlers
+  // Corregir advertencia de cookies() pasando la función directamente
+  const supabase = createRouteHandlerClient({ cookies: () => cookies() }); // Crear cliente Supabase para Route Handlers
 
   const id = searchParams.get('id');
 

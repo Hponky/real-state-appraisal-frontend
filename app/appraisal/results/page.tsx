@@ -122,6 +122,12 @@ export default function Results() {
               <p><strong>Estrato:</strong> {appraisalData.initial_data.estrato}</p>
               <p><strong>Área (m²):</strong> {appraisalData.initial_data.area_usuario_m2}</p>
               <p><strong>Dirección:</strong> {appraisalData.initial_data.direccion}</p>
+              {appraisalData.initial_data.fecha_solicitud && <p><strong>Fecha de Solicitud:</strong> {new Date(appraisalData.initial_data.fecha_solicitud).toLocaleDateString()}</p>}
+              {appraisalData.initial_data.estado_inmueble && <p><strong>Estado del Inmueble:</strong> {appraisalData.initial_data.estado_inmueble}</p>}
+              {appraisalData.initial_data.antiguedad && <p><strong>Antigüedad:</strong> {appraisalData.initial_data.antiguedad} años</p>}
+              {appraisalData.initial_data.numero_habitaciones && <p><strong>Habitaciones:</strong> {appraisalData.initial_data.numero_habitaciones}</p>}
+              {appraisalData.initial_data.numero_banos && <p><strong>Baños:</strong> {appraisalData.initial_data.numero_banos}</p>}
+              {appraisalData.initial_data.parqueadero && <p><strong>Parqueadero:</strong> {appraisalData.initial_data.parqueadero ? 'Sí' : 'No'}</p>}
             </>
           )}
         </Card>
@@ -130,11 +136,17 @@ export default function Results() {
           <Card className="p-6 mb-6">
             <h2 className="text-2xl font-semibold mb-4">Análisis de Mercado</h2>
             {appraisalData.initial_data.analisis_mercado.rango_mercado_cop && (
-              <p><strong>Rango de Mercado (COP):</strong> {appraisalData.initial_data.analisis_mercado.rango_mercado_cop.min} - {appraisalData.initial_data.analisis_mercado.rango_mercado_cop.max}</p>
-            )}
-            {appraisalData.initial_data.analisis_mercado.resumen_mercado && (
-              <p><strong>Resumen:</strong> {appraisalData.initial_data.analisis_mercado.resumen_mercado}</p>
-            )}
+                <p><strong>Rango de Mercado (COP):</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisalData.initial_data.analisis_mercado.rango_mercado_cop.min)} - {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisalData.initial_data.analisis_mercado.rango_mercado_cop.max)}</p>
+              )}
+              {appraisalData.initial_data.analisis_mercado.precio_promedio_m2_zona && (
+                <p><strong>Precio Promedio/m² en Zona (COP):</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisalData.initial_data.analisis_mercado.precio_promedio_m2_zona)}</p>
+              )}
+              {appraisalData.initial_data.analisis_mercado.tendencia_mercado && (
+                <p><strong>Tendencia del Mercado:</strong> {appraisalData.initial_data.analisis_mercado.tendencia_mercado}</p>
+              )}
+              {appraisalData.initial_data.analisis_mercado.resumen_mercado && (
+                <p><strong>Resumen:</strong> {appraisalData.initial_data.analisis_mercado.resumen_mercado}</p>
+              )}
           </Card>
         )}
 
@@ -154,16 +166,22 @@ export default function Results() {
            <Card className="p-6 mb-6">
              <h2 className="text-2xl font-semibold mb-4">Valoración Actual</h2>
              {appraisalData.initial_data.valoracion_actual.estimacion_arriendo_actual_cop && (
-               <p><strong>Estimación Arriendo Actual (COP):</strong> {appraisalData.initial_data.valoracion_actual.estimacion_arriendo_actual_cop}</p>
+               <p><strong>Estimación Arriendo Actual (COP):</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisalData.initial_data.valoracion_actual.estimacion_arriendo_actual_cop)}</p>
+             )}
+             {appraisalData.initial_data.valoracion_actual.estimacion_venta_actual_cop && (
+               <p><strong>Estimación Venta Actual (COP):</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisalData.initial_data.valoracion_actual.estimacion_venta_actual_cop)}</p>
              )}
            </Card>
-        )}
+         )}
 
         {appraisalData.initial_data?.potencial_valorizacion && (
            <Card className="p-6 mb-6">
              <h2 className="text-2xl font-semibold mb-4">Potencial de Valorización</h2>
              {appraisalData.initial_data.potencial_valorizacion.arriendo_potencial_total_estimado_cop && (
-               <p><strong>Arriendo Potencial Estimado (COP):</strong> {appraisalData.initial_data.potencial_valorizacion.arriendo_potencial_total_estimado_cop}</p>
+               <p><strong>Arriendo Potencial Estimado (COP):</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisalData.initial_data.potencial_valorizacion.arriendo_potencial_total_estimado_cop)}</p>
+             )}
+             {appraisalData.initial_data.potencial_valorizacion.venta_potencial_total_estimado_cop && (
+               <p><strong>Venta Potencial Estimada (COP):</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisalData.initial_data.potencial_valorizacion.venta_potencial_total_estimado_cop)}</p>
              )}
              {appraisalData.initial_data.potencial_valorizacion.recomendaciones_valorizacion && appraisalData.initial_data.potencial_valorizacion.recomendaciones_valorizacion.length > 0 && (
                <>
@@ -171,14 +189,14 @@ export default function Results() {
                  <ul className="list-disc list-inside">
                    {appraisalData.initial_data.potencial_valorizacion.recomendaciones_valorizacion.map((rec: any, index: number) => (
                      <li key={index}>
-                       {rec.recomendacion} (Aumento Potencial Estimado: {rec.aumento_potencial_estimado_cop} COP)
+                       {rec.recomendacion} (Aumento Potencial Estimado: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(rec.aumento_potencial_estimado_cop)} COP)
                      </li>
                    ))}
                  </ul>
                </>
              )}
            </Card>
-        )}
+         )}
 
 
       </motion.div>

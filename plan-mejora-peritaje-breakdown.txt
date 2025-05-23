@@ -1,0 +1,21 @@
+# Subtareas de Implementación: Plan de Mejora del Flujo de Peritaje
+
+Este documento detalla las subtareas necesarias para implementar las mejoras propuestas en el plan de mejora del flujo de peritaje.
+
+## Subtareas:
+
+1.  [x] **Refinar el Endpoint `/api/appraisal/receive`:**
+    *   Revisar la lógica de manejo de la respuesta de la operación de actualización de Supabase.
+    *   Asegurar que la respuesta a n8n sea siempre 200 OK si no hay error de Supabase.
+    *   Ajustar los logs para mayor claridad.
+    *   Evaluar si `.select().single()` es necesario y eliminarlo si no se usa.
+
+2.  [x] **Corregir la Advertencia de `cookies()` en `/api/appraisal/status`:**
+    *   Verificar la implementación actual del uso de `cookies()`.
+    *   Asegurar que se use `await` correctamente con `cookies()` si es necesario, o confirmar que la implementación actual es correcta y la advertencia es un falso positivo (menos probable).
+
+3.  [x] **Mejorar la Visualización de Resultados en la Página de Resultados (`/appraisal/results`):**
+    *   Analizar la estructura del objeto `appraisalData.initial_data`.
+    *   Modificar el componente `app/appraisal/results/page.tsx` para renderizar los datos de manera estructurada.
+    *   Utilizar componentes de UI para presentar la información en secciones claras.
+    *   Formatear valores numéricos y listas.
