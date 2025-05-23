@@ -11,7 +11,8 @@ export const appraisalApiService = {
             };
 
             const n8nWebhookUrl = '/api/n8n'; // Usar la ruta local proxied
-            console.log("Calling n8n webhook with URL:", n8nWebhookUrl); // Log antes de fetch
+            console.log("DEBUG: Calling n8n webhook with URL:", n8nWebhookUrl); // Log antes de fetch
+            console.log("DEBUG: n8n webhook request body:", JSON.stringify(requestBody, null, 2)); // Log del cuerpo de la petición
             try {
                 const response = await fetch(n8nWebhookUrl, {
                     method: 'POST',
@@ -21,8 +22,7 @@ export const appraisalApiService = {
                     body: JSON.stringify(requestBody), // Enviar el cuerpo como JSON string
                 });
 
-                console.log("n8n webhook fetch response received.", { status: response.status, ok: response.ok }); // Log después de fetch
-
+                console.log("DEBUG: n8n webhook fetch response received.", { status: response.status, ok: response.ok }); // Log después de fetch
                 if (!response.ok) {
                 const errorBody = await response.text(); // Leer el cuerpo una sola vez como texto
                 let errorData = errorBody || 'Unknown server error';
@@ -34,18 +34,21 @@ export const appraisalApiService = {
                     // Si falla el parseo, usar el texto crudo
                     // errorData ya contiene el texto crudo
                 }
-                console.error("Server response error:", response.status, errorData);
+                console.error("DEBUG: Server response error:", response.status, errorData); // Log de error de respuesta
                 throw new Error(`Error ${response.status}: ${errorData}`);
             }
 
+            console.log("DEBUG: n8n webhook call successful."); // Log de éxito
+
             // Assuming success does not return a specific body needed by the hook
            } catch (error) {
-               console.error("Error during n8n webhook fetch:", error); // Log de error en fetch
+               console.error("DEBUG: Error during n8n webhook fetch:", error); // Log de error en fetch
                throw error; // Re-throw to be caught by the hook
            }
        } catch (error) {
-           console.error("Error submitting form to n8n (general catch):", error); // Log de error general
+           console.error("DEBUG: Error submitting form to n8n (general catch):", error); // Log de error general
            throw error; // Re-throw to be caught by the hook
-       }
+       
+   }
    }
 };

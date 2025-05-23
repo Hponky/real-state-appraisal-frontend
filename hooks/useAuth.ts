@@ -1,51 +1,49 @@
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { useSupabase } from '@/components/supabase-provider'; // Importar el hook del proveedor
 
 interface AuthState {
   user: User | null;
-  isLoading: boolean;
+  isLoading: boolean; // Mantener isLoading si es necesario para otros usos del hook
 }
 
 export function useAuth(): AuthState {
-  const [authState, setAuthState] = useState<AuthState>({ user: null, isLoading: true });
+  // Obtener el cliente Supabase y la sesión del contexto del proveedor
+  const { supabase, session } = useSupabase();
+
+  // El estado de carga ahora puede derivarse de si la sesión ya se ha cargado
+  // O podrías mantener un estado isLoading si necesitas un control más granular
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthState({ user: session?.user ?? null, isLoading: false });
-    });
+    // La sesión ya es manejada por el proveedor, solo necesitamos reaccionar a ella
+    if (session !== undefined) { // session puede ser null o un objeto Session
+      setIsLoading(false);
+    }
+  }, [session]); // Depende de la sesión proporcionada por el contexto
 
-    // Obtener la sesión inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setAuthState({ user: session?.user ?? null, isLoading: false });
-    });
-
-    // Limpiar la suscripción al desmontar
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []); // Se ejecuta solo una vez al montar
-
-  // Intentar inicio de sesión anónimo si no hay usuario y no está cargando
+  // Lógica para inicio de sesión anónimo (opcional, considera moverla si solo se necesita en /appraisal)
   useEffect(() => {
-    if (!authState.isLoading && !authState.user) {
-      console.log("No authenticated user found, attempting anonymous sign-in from useAuth.");
+    // Solo intentar si no hay sesión y no estamos cargando (basado en el estado local)
+    if (!isLoading && !session) {
+      console.log("No authenticated session found, attempting anonymous sign-in from useAuth.");
       supabase.auth.signInAnonymously()
         .then(({ data, error }) => {
           if (error) {
             console.error('Error signing in anonymously:', error);
-            // Manejar el error de inicio de sesión anónimo si es necesario
+            // Manejar el error
           } else {
-            console.log('Anonymous user signed in:', data.user);
-            // El onAuthStateChange manejará la actualización del estado
+            console.log('Anonymous user signed in:', data?.user);
+            // El estado de la sesión en el proveedor se actualizará automáticamente
           }
         })
         .catch(err => {
            console.error('Caught error during anonymous sign-in in useAuth:', err);
-           // Manejar errores de promesa si es necesario
+           // Manejar errores de promesa
         });
     }
-  }, [authState.isLoading, authState.user]); // Depende del estado de carga y del usuario
+  }, [isLoading, session, supabase]); // Depende de isLoading, session y supabase del contexto
 
-  return authState;
+  // Devolver el usuario de la sesión del proveedor y el estado de carga local
+  return { user: session?.user ?? null, isLoading };
 }

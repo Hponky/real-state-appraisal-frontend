@@ -24,7 +24,9 @@ export default function Results() {
 
     const fetchResults = async () => {
       try {
-        const response = await fetch(`/api/appraisal/status?id=${requestId}`);
+        const response = await fetch(`/api/appraisal/status?id=${requestId}`, {
+          credentials: 'include', // Incluir cookies de autenticación
+        });
         const result = await response.json();
 
         if (response.ok && result.status === 'completed') {
