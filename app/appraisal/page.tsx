@@ -1,6 +1,7 @@
 "use client";
+// Forzar recarga de tipos
 
-import { useAppraisalForm } from './useAppraisalForm';
+import useAppraisalForm from './hooks/useAppraisalForm';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,15 +9,18 @@ import { LocationFields } from './components/LocationFields';
 import { PropertyDetailsFields } from './components/PropertyDetailsFields';
 import { ImageUploadSection } from './components/ImageUploadSection';
 import { MaterialQualitySection } from './components/MaterialQualitySection';
-import { ArrowLeft } from "lucide-react"; // Only ArrowLeft is used directly
+import { ArrowLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import LegalSections from './components/LegalSections';
+import { Switch } from "@/components/ui/switch";
+import { FormProvider } from 'react-hook-form'; // Importar FormProvider
 
 export default function AppraisalForm() {
+  const methods = useAppraisalForm(); // Obtener todos los métodos del hook
   const {
     formData,
-    setFormData,
     images,
     errors,
     isSubmitting,
@@ -31,8 +35,18 @@ export default function AppraisalForm() {
     addMaterialQualityEntry,
     removeMaterialQualityEntry,
     updateMaterialQualityEntry,
-    handleNumericChange
-  } = useAppraisalForm();
+    handleNumericChange,
+    handleStringChange,
+    handleBooleanChange,
+    handleZonaDeclaratoriaChange,
+    handlePotRestrictionsChange,
+    handleZonaDeclaratoriaRestriccionesChange,
+    showLegalSections,
+    setShowLegalSections,
+    handleLegalBooleanChange,
+    handlePHBooleanChange,
+    handlePHStringChange,
+  } = methods; // Desestructurar los métodos de 'methods'
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary py-8">
@@ -62,66 +76,86 @@ export default function AppraisalForm() {
                  </div>
             )}
 
-             {errors.submit && (
-              <div className="mb-4 p-4 bg-destructive/10 text-destructive border border-destructive rounded-md">
-                <p>{errors.submit}</p>
-              </div>
-            )}
 
-            <form onSubmit={submitFormData} className="space-y-6" encType="multipart/form-data" method="POST">
-              <LocationFields
-                  formData={formData}
-                  setFormData={setFormData}
-                  errors={errors}
-                  departments={departments}
-                  cities={cities}
-                  isLoadingPlaces={isLoadingPlaces}
-                  placesError={placesError}
-              />
-
-              <PropertyDetailsFields
-                  formData={formData}
-                  setFormData={setFormData}
-                  errors={errors}
-                  handleNumericChange={handleNumericChange}
-              />
-
-              <div className="space-y-2">
-                <Label htmlFor="expectedValue">Valor Esperado del Arriendo (COP)</Label>
-                <Input
-                  id="expectedValue"
-                  type="number"
-                  value={formData.expectedValue}
-                  onChange={(e) => handleNumericChange('expectedValue', e.target.value)}
-                  placeholder="Ej: 1500000"
-                  min="0"
+            <FormProvider {...methods}> {/* Envolver el formulario con FormProvider */}
+              <form onSubmit={(e) => { console.log("DEBUG: Form onSubmit event triggered."); methods.handleSubmit(submitFormData)(e); }} className="space-y-6" encType="multipart/form-data" method="POST">
+                <LocationFields
+                    departments={departments}
+                    cities={cities}
+                    isLoadingPlaces={isLoadingPlaces}
+                    placesError={placesError}
                 />
-                {errors.expectedValue && <p className="text-sm text-destructive">{errors.expectedValue}</p>}
-              </div>
 
-              <ImageUploadSection
-                  images={images}
-                  errors={errors}
-                  handleImageUpload={handleImageUpload}
-                  removeImage={removeImage}
-              />
+                <PropertyDetailsFields
+                    formData={formData}
+                    errors={errors}
+                    handleNumericChange={handleNumericChange}
+                    handleStringChange={handleStringChange}
+                />
 
-              <MaterialQualitySection
-                  materialQualityEntries={materialQualityEntries}
-                  errors={errors}
-                  addMaterialQualityEntry={addMaterialQualityEntry}
-                  removeMaterialQualityEntry={removeMaterialQualityEntry}
-                  updateMaterialQualityEntry={updateMaterialQualityEntry}
-              />
+                <div className="space-y-2">
+                  <Label htmlFor="expectedValue">Valor Esperado del Arriendo (COP)</Label>
+                  <Input
+                    id="expectedValue"
+                    type="number"
+                    value={formData.expectedValue}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNumericChange('expectedValue', e.target.value)}
+                    placeholder="Ej: 1500000"
+                    min="0"
+                  />
+                  {errors.expectedValue && <p className="text-sm text-destructive">{errors.expectedValue}</p>}
+                </div>
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Procesando..." : "Continuar y Evaluar"}
-              </Button>
-            </form>
+                {/* Toggle para mostrar/ocultar secciones legales */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="show-legal-sections"
+                    checked={showLegalSections}
+                    onCheckedChange={setShowLegalSections}
+                  />
+                  <Label htmlFor="show-legal-sections">Incluir Secciones Legales (Opcional)</Label>
+                </div>
+
+                <ImageUploadSection
+                    images={images}
+                    errors={errors}
+                    handleImageUpload={handleImageUpload}
+                    removeImage={removeImage}
+                />
+
+                <MaterialQualitySection
+                    materialQualityEntries={materialQualityEntries}
+                    errors={errors}
+                    addMaterialQualityEntry={addMaterialQualityEntry}
+                    removeMaterialQualityEntry={removeMaterialQualityEntry}
+                    updateMaterialQualityEntry={updateMaterialQualityEntry}
+                />
+
+                {/* Renderizar secciones legales condicionalmente */}
+                {showLegalSections && (
+                  <LegalSections
+                    formData={formData}
+                    errors={errors}
+                    handleStringChange={handleStringChange}
+                    handleBooleanChange={handleBooleanChange}
+                    handleZonaDeclaratoriaChange={handleZonaDeclaratoriaChange}
+                    handlePHBooleanChange={handlePHBooleanChange}
+                    handlePHStringChange={handlePHStringChange}
+                    handleLegalBooleanChange={handleLegalBooleanChange}
+                    handlePotRestrictionsChange={handlePotRestrictionsChange}
+                    handleZonaDeclaratoriaRestriccionesChange={handleZonaDeclaratoriaRestriccionesChange}
+                  />
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Procesando..." : "Continuar y Evaluar"}
+                </Button>
+              </form>
+            </FormProvider> {/* Cerrar FormProvider */}
           </Card>
         </motion.div>
       </div>

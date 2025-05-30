@@ -2,7 +2,7 @@ import { useCallback, useState, Dispatch, SetStateAction, useEffect } from "reac
 import { useRouter } from "next/navigation";
 import { AppraisalFormData } from "./appraisalFormSchema";
 import { MaterialQualityEntry } from "./useMaterialQualityEntries";
-import { appraisalApiService } from "../services/appraisalApiService";
+import { appraisalApiService } from "../../services/appraisalApiService";
 import { v4 as uuidv4 } from 'uuid';
 import { User, RealtimePostgresChangesPayload } from '@supabase/supabase-js'; // Importar tipos necesarios de supabase-js
 import { useAuth } from '@/hooks/useAuth';
@@ -15,7 +15,7 @@ interface UseAppraisalSubmissionProps {
     materialQualityEntries: MaterialQualityEntry[];
     setErrors: Dispatch<SetStateAction<Record<string, string>>>;
     clearImageErrors: () => void;
-    setIsSubmitting: Dispatch<SetStateAction<boolean>>;
+    validateForm: () => boolean; // Add validateForm to the interface
 }
 
 export function useAppraisalSubmission({
@@ -24,9 +24,9 @@ export function useAppraisalSubmission({
     materialQualityEntries,
     setErrors,
     clearImageErrors,
-    setIsSubmitting,
 }: UseAppraisalSubmissionProps) {
     const router = useRouter();
+    const [isSubmitting, setIsSubmitting] = useState(false); // Declarar isSubmitting como estado local
     const [requestId, setRequestId] = useState<string | null>(null); // Estado para guardar el requestId
 
     // Usar el hook useAuth para obtener el usuario y el estado de carga
@@ -35,8 +35,8 @@ export function useAppraisalSubmission({
     const { supabase } = useSupabase();
 
 
-    const submitFormData = useCallback(async (event: React.FormEvent) => {
-        event.preventDefault(); // Prevenir el comportamiento por defecto del formulario
+    const submitFormData = useCallback(async (data: AppraisalFormData) => {
+        // event.preventDefault() no es necesario aquí, handleSubmit de react-hook-form ya lo maneja
         console.log("Iniciando submitFormData...");
         clearImageErrors();
         setIsSubmitting(true);
@@ -141,7 +141,7 @@ export function useAppraisalSubmission({
             setErrors(prev => ({ ...prev, submit: `Error general al enviar el formulario. ${error instanceof Error ? error.message : 'Por favor, intente de nuevo.'}` }));
             setIsSubmitting(false);
         }
-    }, [formData, imageFiles, materialQualityEntries, setErrors, clearImageErrors, setIsSubmitting, router, user, supabase]); // Añadir user y supabase a dependencias
+    }, [formData, imageFiles, materialQualityEntries, setErrors, clearImageErrors, setIsSubmitting, user, supabase, isLoading]); // Eliminar router de dependencias
 
     // useEffect para manejar la suscripción a Supabase Realtime
     useEffect(() => {
@@ -203,5 +203,7 @@ export function useAppraisalSubmission({
 
     return {
         submitFormData,
+        isSubmitting,
+        setIsSubmitting,
     };
 }

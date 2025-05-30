@@ -13,7 +13,12 @@ const customJestConfig = {
   // Handle CSS imports
   moduleNameMapper: {
     '^.+\\.css$': '<rootDir>/__mocks__/styleMock.js',
+    '^@/(.*)$': '<rootDir>/$1',
   },
+  // Transform modules that use ES Modules syntax
+  transformIgnorePatterns: [
+    '/node_modules/(?!(jose|@supabase/auth-helpers-nextjs|@supabase/auth-helpers-shared|@supabase/supabase-js)/)',
+  ],
   // Use ts-jest for TypeScript transformations
   transform: {
     '^.+\\.(ts|tsx)$': 'ts-jest',

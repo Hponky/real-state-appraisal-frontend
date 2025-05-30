@@ -1,5 +1,14 @@
+@import 'sweetalert2/dist/sweetalert2.min.css';
 @tailwind base;
 @tailwind components;
+/* Ensure SweetAlert2 buttons have their intended background */
+.swal2-styled.swal2-confirm {
+  background-color: var(--swal2-confirm-button-background-color) ;
+}
+
+.swal2-styled.swal2-cancel {
+  background-color: var(--swal2-cancel-button-background-color) ;
+}
 @tailwind utilities;
 
 :root {
@@ -76,4 +85,11 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom class for tooltip content with long text */
+.tooltip-content-long-text {
+  max-width: 300px; /* Adjust as needed */
+  word-wrap: break-word;
+  white-space: normal;
 }

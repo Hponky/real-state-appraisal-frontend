@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { useMaterialQualityEntries } from '../useMaterialQualityEntries';
+import { useMaterialQualityEntries } from '../hooks/useMaterialQualityEntries';
 
 describe('useMaterialQualityEntries', () => {
   const mockSetErrors = jest.fn();

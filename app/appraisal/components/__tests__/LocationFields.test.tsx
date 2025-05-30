@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { LocationFields } from '../LocationFields';
-import { AppraisalFormData } from '../../appraisalFormSchema';
+import { AppraisalFormData } from '../../hooks/appraisalFormSchema';
 import '@testing-library/jest-dom';
 
 // Mock the shadcn/ui select component as it requires specific DOM structure and context

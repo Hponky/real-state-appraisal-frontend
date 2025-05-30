@@ -8,7 +8,7 @@ const nextConfig = {
     return [
       {
         source: '/api/n8n/:path*',
-        destination: 'http://localhost:5678/webhook-test/recepcion-datos-inmueble/:path*',
+        destination: process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook-test/recepcion-datos-inmueble/:path*',
       },
     ];
   },

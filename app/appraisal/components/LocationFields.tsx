@@ -7,88 +7,115 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AppraisalFormData } from "../appraisalFormSchema";
-import { Dispatch, SetStateAction } from "react";
+import { useFormContext } from "react-hook-form";
+import { AppraisalFormData } from "../hooks/appraisalFormSchema";
+import { useLocationData } from "../hooks/useLocationData";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
 interface LocationFieldsProps {
-    formData: AppraisalFormData;
-    setFormData: Dispatch<SetStateAction<AppraisalFormData>>;
-    errors: Record<string, string>;
-    departments: string[];
-    cities: string[];
-    isLoadingPlaces: boolean;
-    placesError: string | null;
+  departments: string[];
+  cities: string[];
+  isLoadingPlaces: boolean;
+  placesError: string | null;
 }
 
 export function LocationFields({
-    formData,
-    setFormData,
-    errors,
-    departments,
-    cities,
-    isLoadingPlaces,
-    placesError,
+  departments,
+  cities,
+  isLoadingPlaces,
+  placesError,
 }: LocationFieldsProps) {
-    return (
-        <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-                <Label htmlFor="department">Departamento</Label>
-                <Select
-                    value={formData.department}
-                    onValueChange={(value) => setFormData({ ...formData, department: value, city: "" })}
-                >
-                    <SelectTrigger id="department">
-                        <SelectValue placeholder="Seleccione departamento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {!isLoadingPlaces && !placesError && departments.map((dept) => (
-                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                        ))}
-                        {(isLoadingPlaces || placesError) && (
-                            <div className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm text-muted-foreground opacity-50">
-                                {isLoadingPlaces ? "Cargando..." : "Error al cargar"}
-                            </div>
-                        )}
-                    </SelectContent>
-                </Select>
-                {errors.department && <p className="text-sm text-destructive">{errors.department}</p>}
-            </div>
+  const { control, formState: { errors }, setValue, watch } = useFormContext<AppraisalFormData>();
+  const formData = watch(); // Obtener los datos del formulario para los valores de los campos
 
-            <div className="space-y-2">
-                <Label htmlFor="city">Ciudad</Label>
-                <Select
-                    value={formData.city}
-                    onValueChange={(value) => setFormData({ ...formData, city: value })}
-                    disabled={!formData.department || cities.length === 0}
-                >
-                    <SelectTrigger id="city">
-                        <SelectValue placeholder={!formData.department ? "Seleccione departamento primero" : "Seleccione ciudad"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {!isLoadingPlaces && !placesError && formData.department && cities.length > 0 ? (
-                            cities.map((city) => (
-                                <SelectItem key={city} value={city}>{city}</SelectItem>
-                            ))
-                        ) : (
-                            <div className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm text-muted-foreground opacity-50">
-                                {isLoadingPlaces ? "Cargando ciudades..." : placesError ? "Error al cargar ciudades" : !formData.department ? "Seleccione departamento primero" : "No hay ciudades disponibles"}
-                            </div>
-                        )}
-                    </SelectContent>
-                </Select>
-                {errors.city && <p className="text-sm text-destructive">{errors.city}</p>}
-            </div>
+  const { departments: fetchedDepartments, cities: fetchedCities, isLoadingPlaces: isLoadingLocationData, placesError: locationDataError } = useLocationData(formData.department || "");
 
-            <div className="space-y-2">
-                <Label htmlFor="address">Dirección</Label>
-                <Input
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Ej: Calle 123 #45-67"
-                />
-                {errors.address && <p className="text-sm text-destructive">{errors.address}</p>}
-            </div>
-        </div>
-    );
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      <FormField
+        control={control}
+        name="department"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel htmlFor="department">Departamento</FormLabel>
+            <Select
+              value={field.value}
+              onValueChange={(value) => {
+                field.onChange(value);
+                setValue("city", ""); // Reset city when department changes
+              }}
+            >
+              <FormControl>
+                <SelectTrigger id="department">
+                  <SelectValue placeholder="Seleccione departamento" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {!isLoadingLocationData && !locationDataError && fetchedDepartments.map((dept) => (
+                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                ))}
+                {(isLoadingLocationData || locationDataError) && (
+                  <div className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm text-muted-foreground opacity-50">
+                    {isLoadingLocationData ? "Cargando..." : "Error al cargar"}
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name="city"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel htmlFor="city">Ciudad</FormLabel>
+            <Select
+              value={field.value}
+              onValueChange={field.onChange}
+              disabled={!formData.department || fetchedCities.length === 0 || isLoadingLocationData}
+            >
+              <FormControl>
+                <SelectTrigger id="city">
+                  <SelectValue placeholder={!formData.department ? "Seleccione departamento primero" : "Seleccione ciudad"} />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {!isLoadingLocationData && !locationDataError && formData.department && fetchedCities.length > 0 ? (
+                  fetchedCities.map((city) => (
+                    <SelectItem key={city} value={city}>{city}</SelectItem>
+                  ))
+                ) : (
+                  <div className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm text-muted-foreground opacity-50">
+                    {isLoadingLocationData ? "Cargando ciudades..." : locationDataError ? "Error al cargar ciudades" : !formData.department ? "Seleccione departamento primero" : "No hay ciudades disponibles"}
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name="address"
+        render={({ field }) => (
+          <FormItem className="space-y-2">
+            <FormLabel htmlFor="address">Dirección</FormLabel>
+            <FormControl>
+              <Input
+                id="address"
+                placeholder="Ej: Calle 123 #45-67"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
 }

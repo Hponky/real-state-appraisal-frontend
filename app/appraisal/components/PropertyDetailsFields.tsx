@@ -7,64 +7,64 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AppraisalFormData } from "../appraisalFormSchema";
+import { AppraisalFormData } from "../hooks/appraisalFormSchema";
 import { Dispatch, SetStateAction } from "react";
 
 interface PropertyDetailsFieldsProps {
     formData: AppraisalFormData;
-    setFormData: Dispatch<SetStateAction<AppraisalFormData>>;
     errors: Record<string, string>;
     handleNumericChange: (field: keyof AppraisalFormData, value: string) => void;
+    handleStringChange: (field: keyof AppraisalFormData, value: string) => void;
 }
 
 export function PropertyDetailsFields({
     formData,
-    setFormData,
     errors,
     handleNumericChange,
+    handleStringChange, // Desestructurar handleStringChange
 }: PropertyDetailsFieldsProps) {
     return (
         <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-                <Label htmlFor="area">Área (m²) - Opcional</Label>
+                <Label htmlFor="built_area">Área Construida (m²)</Label>
                 <Input
-                    id="area"
+                    id="built_area"
                     type="number"
-                    value={formData.area ?? ''}
-                    onChange={(e) => handleNumericChange('area', e.target.value)}
+                    value={formData.built_area}
+                    onChange={(e) => handleNumericChange('built_area', e.target.value)}
                     placeholder="Ej: 80"
                     min="0"
                 />
-                {errors.area && <p className="text-sm text-destructive">{errors.area}</p>}
+                {errors.built_area && <p className="text-sm text-destructive">{errors.built_area}</p>}
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="stratum">Estrato</Label>
+                <Label htmlFor="estrato">Estrato</Label>
                 <Select
-                    value={formData.stratum}
-                    onValueChange={(value) => setFormData({ ...formData, stratum: value })}
+                    value={formData.estrato}
+                    onValueChange={(value) => handleStringChange('estrato', value)}
                 >
-                    <SelectTrigger id="stratum">
+                    <SelectTrigger id="estrato">
                         <SelectValue placeholder="Seleccione estrato" />
                     </SelectTrigger>
                     <SelectContent>
-                        {[1, 2, 3, 4, 5, 6].map((stratum) => (
-                            <SelectItem key={stratum} value={stratum.toString()}>
-                                Estrato {stratum}
+                        {[1, 2, 3, 4, 5, 6].map((estrato) => (
+                            <SelectItem key={estrato} value={estrato.toString()}>
+                                Estrato {estrato}
                             </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
-                {errors.stratum && <p className="text-sm text-destructive">{errors.stratum}</p>}
+                {errors.estrato && <p className="text-sm text-destructive">{errors.estrato}</p>}
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="propertyType">Tipo de Inmueble</Label>
+                <Label htmlFor="property_type">Tipo de Inmueble</Label>
                 <Select
-                    value={formData.propertyType}
-                    onValueChange={(value) => setFormData({ ...formData, propertyType: value })}
+                    value={formData.property_type}
+                    onValueChange={(value) => handleStringChange('property_type', value)}
                 >
-                    <SelectTrigger id="propertyType">
+                    <SelectTrigger id="property_type">
                         <SelectValue placeholder="Seleccione tipo de inmueble" />
                     </SelectTrigger>
                     <SelectContent>
@@ -78,20 +78,20 @@ export function PropertyDetailsFields({
                         <SelectItem value="Garaje">Garaje</SelectItem>
                     </SelectContent>
                 </Select>
-                {errors.propertyType && <p className="text-sm text-destructive">{errors.propertyType}</p>}
+                {errors.property_type && <p className="text-sm text-destructive">{errors.property_type}</p>}
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="adminFee">Administración (COP) - Opcional</Label>
+                <Label htmlFor="admin_fee">Administración (COP) - Opcional</Label>
                 <Input
-                    id="adminFee"
+                    id="admin_fee"
                     type="number"
-                    value={formData.adminFee ?? ''}
-                    onChange={(e) => handleNumericChange('adminFee', e.target.value)}
+                    value={formData.admin_fee ?? ''}
+                    onChange={(e) => handleNumericChange('admin_fee', e.target.value)}
                     placeholder="Ej: 200000"
                     min="0"
                 />
-                {errors.adminFee && <p className="text-sm text-destructive">{errors.adminFee}</p>}
+                {errors.admin_fee && <p className="text-sm text-destructive">{errors.admin_fee}</p>}
             </div>
         </div>
     );

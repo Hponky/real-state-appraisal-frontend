@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus } from "lucide-react";
 import { motion } from "framer-motion";
-import { MaterialQualityEntry } from "../useMaterialQualityEntries";
+import { MaterialQualityEntry } from "../hooks/useMaterialQualityEntries";
 
 interface MaterialQualitySectionProps {
     materialQualityEntries: MaterialQualityEntry[];

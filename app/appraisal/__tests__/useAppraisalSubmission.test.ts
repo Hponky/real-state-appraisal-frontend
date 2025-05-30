@@ -1,9 +1,9 @@
 import { renderHook, act } from '@testing-library/react';
-import { useAppraisalSubmission } from '../useAppraisalSubmission';
+import { useAppraisalSubmission } from '../hooks/useAppraisalSubmission';
 import { appraisalApiService } from '../../services/appraisalApiService';
 import { useRouter } from 'next/navigation';
-import { AppraisalFormData } from '../appraisalFormSchema';
-import { MaterialQualityEntry } from '../useMaterialQualityEntries';
+import { AppraisalFormData } from '../hooks/appraisalFormSchema';
+import { MaterialQualityEntry } from '../hooks/useMaterialQualityEntries';
 
 // Mock dependencies
 jest.mock('../../services/appraisalApiService');

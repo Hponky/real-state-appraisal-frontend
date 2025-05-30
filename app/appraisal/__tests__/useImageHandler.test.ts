@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { useImageHandler } from '../useImageHandler';
+import { useImageHandler } from '../hooks/useImageHandler';
 
 // Mock URL.createObjectURL and URL.revokeObjectURL
 global.URL.createObjectURL = jest.fn((file: File) => `mock-url-${file.name}`);
@@ -59,36 +59,63 @@ describe('useImageHandler', () => {
     expect(result.current.imageErrors).toBeNull(); // Errors should be cleared on removal
   });
 
-  test('should set error if more than MAX_IMAGES are uploaded', () => {
+  test('should set error if more than MAX_IMAGES are uploaded and prevent adding new images', () => {
     const { result } = renderHook(() => useImageHandler());
-    const manyFiles = Array(31).fill(new File(['dummy'], 'image.jpg', { type: 'image/jpeg' }));
-    const event = { target: { files: manyFiles, value: '' } } as any;
+    const MAX_IMAGES = 30; // Assuming MAX_IMAGES is 30 as per the hook
+    const initialFiles = Array(MAX_IMAGES).fill(new File(['dummy'], 'image.jpg', { type: 'image/jpeg' }));
+    const initialEvent = { target: { files: initialFiles, value: '' } } as any;
 
     act(() => {
-      result.current.handleImageUpload(event);
+      result.current.handleImageUpload(initialEvent);
     });
 
-    expect(result.current.images).toEqual([]); // No images should be added
-    expect(result.current.imageFiles).toEqual([]);
-    expect(result.current.imageErrors).toBe("Ya ha alcanzado el límite de 30 imágenes.");
-    expect(global.URL.createObjectURL).not.toHaveBeenCalled();
+    expect(result.current.images).toHaveLength(MAX_IMAGES);
+    expect(result.current.imageFiles).toHaveLength(MAX_IMAGES);
+    expect(result.current.imageErrors).toBeNull();
+    expect(global.URL.createObjectURL).toHaveBeenCalledTimes(MAX_IMAGES);
+
+    // Attempt to upload one more file than allowed
+    const extraFile = new File(['dummy'], 'extra-image.jpg', { type: 'image/jpeg' });
+    const extraEvent = { target: { files: [extraFile], value: '' } } as any;
+
+    act(() => {
+      result.current.handleImageUpload(extraEvent);
+    });
+
+    expect(result.current.images).toHaveLength(MAX_IMAGES); // Should still be MAX_IMAGES
+    expect(result.current.imageFiles).toHaveLength(MAX_IMAGES); // Should still be MAX_IMAGES
+    expect(result.current.imageErrors).toBe(`Ya ha alcanzado el límite de ${MAX_IMAGES} imágenes.`);
+    expect(global.URL.createObjectURL).toHaveBeenCalledTimes(MAX_IMAGES); // No new URLs should be created
   });
 
   test('should clear image errors on clearImageErrors', () => {
     const { result } = renderHook(() => useImageHandler());
-    const manyFiles = Array(31).fill(new File(['dummy'], 'image.jpg', { type: 'image/jpeg' }));
-    const event = { target: { files: manyFiles, value: '' } } as any;
+    const MAX_IMAGES = 30;
 
+    // First, upload MAX_IMAGES to reach the limit
+    const initialFiles = Array(MAX_IMAGES).fill(new File(['dummy'], 'image.jpg', { type: 'image/jpeg' }));
     act(() => {
-      result.current.handleImageUpload(event); // This will set an error
+      result.current.handleImageUpload({ target: { files: initialFiles, value: '' } } as any);
+    });
+    expect(result.current.images).toHaveLength(MAX_IMAGES);
+    expect(result.current.imageErrors).toBeNull();
+
+    // Then, attempt to upload one more file to trigger the error
+    const extraFile = new File(['dummy'], 'extra-image.jpg', { type: 'image/jpeg' });
+    act(() => {
+      result.current.handleImageUpload({ target: { files: [extraFile], value: '' } } as any);
     });
 
+    // Expect an error to be set
     expect(result.current.imageErrors).not.toBeNull();
+    expect(result.current.imageErrors).toBe(`Ya ha alcanzado el límite de ${MAX_IMAGES} imágenes.`);
 
+    // Clear the errors
     act(() => {
       result.current.clearImageErrors();
     });
 
+    // Expect errors to be null after clearing
     expect(result.current.imageErrors).toBeNull();
   });
 

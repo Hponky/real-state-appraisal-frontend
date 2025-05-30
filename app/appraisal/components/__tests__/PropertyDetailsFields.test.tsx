@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PropertyDetailsFields } from '../PropertyDetailsFields';
-import { AppraisalFormData } from '../../appraisalFormSchema';
+import { AppraisalFormData } from '../../hooks/appraisalFormSchema';
 import '@testing-library/jest-dom';
 
 // Mock shadcn/ui components

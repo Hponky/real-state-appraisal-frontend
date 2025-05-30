@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MaterialQualitySection } from '../MaterialQualitySection';
-import { MaterialQualityEntry } from '../../useMaterialQualityEntries';
+import { MaterialQualityEntry } from '../../hooks/useMaterialQualityEntries';
 import '@testing-library/jest-dom';
 
 // Mock shadcn/ui components
