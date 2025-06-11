@@ -127,7 +127,7 @@ const dataForN8n = {
             if (!session?.access_token) {
                 throw new Error("No se encontró el token de autenticación. Por favor, inicie sesión.");
             }
-            await appraisalApiService.submitAppraisal(newRequestId, dataForN8n, session.access_token);
+            await appraisalApiService.submitAppraisal(newRequestId, dataForN8n);
 
 
             // NOTA: La lógica de espera y redirección ahora se maneja en el useEffect de suscripción a Realtime.
