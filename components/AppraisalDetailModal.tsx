@@ -179,6 +179,7 @@ const AppraisalDetailModal: React.FC<AppraisalDetailModalProps> = ({ isOpen, onC
             {renderSection("Valoración de Arriendo Actual", appraisal.valoracion_arriendo_actual, "current-rent-valuation")}
             {renderSection("Potencial de Valorización con Mejoras", appraisal.potencial_valorizacion_con_mejoras_explicado, "improvement-potential")}
             {renderSection("Análisis Cualitativo de Arriendo", appraisal.analisis_cualitativo_arriendo, "qualitative-rent-analysis")}
+            {renderSection("Análisis Legal de Arrendamiento", appraisal.analisis_legal_arrendamiento, "legal-analysis")}
             {appraisal.recomendaciones_proximos_pasos && appraisal.recomendaciones_proximos_pasos.length > 0 && (
               <AccordionItem value="next-steps-recommendations">
                 <AccordionTrigger className="text-lg font-semibold">Recomendaciones y Próximos Pasos</AccordionTrigger>

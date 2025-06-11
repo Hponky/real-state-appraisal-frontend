@@ -131,7 +131,7 @@ export default function Results() {
         const result = await response.json();
 
         if (response.ok && result.status === 'completed') {
-          if (result.results && result.results.initial_data) {
+          if (result.results) {
             setAppraisalData(result.results.initial_data);
           } else {
             setError("Invalid appraisal results format or missing initial data.");
@@ -333,6 +333,25 @@ export default function Results() {
          </Card>
        )}
 
+       {appraisalData.analisis_legal_arrendamiento && (
+         <Card className="p-6 mb-6">
+           <h2 className="text-2xl font-semibold mb-4">Análisis Legal de Arrendamiento</h2>
+           {appraisalData.analisis_legal_arrendamiento.restricciones_legales_identificadas && appraisalData.analisis_legal_arrendamiento.restricciones_legales_identificadas.length > 0 && (
+             <div className="mb-4">
+               <h3 className="text-xl font-medium mb-2">Restricciones Legales Identificadas:</h3>
+               <ul className="list-disc pl-5 space-y-1">
+                 {appraisalData.analisis_legal_arrendamiento.restricciones_legales_identificadas.map((restriccion, index) => (
+                   <li key={index}>{restriccion}</li>
+                 ))}
+               </ul>
+             </div>
+           )}
+           {appraisalData.analisis_legal_arrendamiento.observaciones_legales && (
+             <p><strong>Observaciones Legales:</strong> {appraisalData.analisis_legal_arrendamiento.observaciones_legales}</p>
+           )}
+         </Card>
+       )}
+ 
        {appraisalData.recomendaciones_proximos_pasos && appraisalData.recomendaciones_proximos_pasos.length > 0 && (
          <Card className="p-6 mb-6">
            <h2 className="text-2xl font-semibold mb-4">Recomendaciones y Próximos Pasos</h2>

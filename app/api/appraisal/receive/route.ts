@@ -38,12 +38,23 @@ export async function POST(request: Request) {
 
     console.log("Received data from n8n:", appraisalData); // Log para mostrar todo el cuerpo recibido
 
-    // --- 3. Validar y extraer el requestId ---
-    const { requestId } = appraisalData;
+    // --- 3. Validar y extraer el requestId de forma flexible ---
+    let requestId: string | undefined;
+
+    // Priorizar requestId en la raíz
+    if (appraisalData.requestId) {
+      requestId = appraisalData.requestId;
+    } else if (appraisalData.informacion_basica?.requestId) {
+      // Si no está en la raíz, buscar en informacion_basica
+      requestId = appraisalData.informacion_basica.requestId;
+    } else if (appraisalData.analisis_legal_arrendamiento?.requestId) {
+      // Si no está en informacion_basica, buscar en analisis_legal_arrendamiento
+      requestId = appraisalData.analisis_legal_arrendamiento.requestId;
+    }
 
     if (!requestId) {
-      console.error('Invalid data received from n8n: missing requestId'); // Log de error de validación
-      return NextResponse.json({ error: 'Invalid data format' }, { status: 400 });
+      console.error('Invalid data received from n8n: missing or unlocatable requestId'); // Log de error de validación
+      return NextResponse.json({ error: 'Invalid data format: requestId not found' }, { status: 400 });
     }
 
     // --- 4. Guardar los datos recibidos de n8n en Supabase usando la clave de rol de servicio ---

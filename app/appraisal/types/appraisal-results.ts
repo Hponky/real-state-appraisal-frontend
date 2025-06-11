@@ -40,6 +40,18 @@ export interface AnalisisCualitativoArriendo {
   comentario_mercado_general_ciudad: string;
 }
 
+export interface AnalisisLegalArrendamiento {
+  requestId?: string; // Optional, as it's also at the root
+  tipo_uso_principal_analizado?: string;
+  viabilidad_general_preliminar?: string;
+  puntos_criticos_y_riesgos?: any[]; // Using any[] as the exact structure is not provided
+  documentacion_clave_a_revisar_o_completar?: any[]; // Using any[] as the exact structure is not provided
+  consideraciones_contractuales_sugeridas?: string[];
+  resumen_ejecutivo_legal?: string;
+  restricciones_legales_identificadas?: string[];
+  observaciones_legales?: string;
+}
+
 export interface AppraisalResult {
   requestId: string;
   informacion_basica: InformacionBasica;
@@ -49,6 +61,7 @@ export interface AppraisalResult {
   potencial_valorizacion_con_mejoras_explicado?: PotencialValorizacionConMejorasExplicado;
   // Campos para la segunda estructura (nueva)
   analisis_cualitativo_arriendo?: AnalisisCualitativoArriendo;
+  analisis_legal_arrendamiento?: AnalisisLegalArrendamiento;
   recomendaciones_proximos_pasos?: string[];
   gemini_usage_metadata: {
     promptTokenCount: number;

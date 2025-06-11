@@ -11,7 +11,7 @@ import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { appraisalApiService } from "@/app/services/appraisalApiService";
-import { AppraisalResult, InformacionBasica, AnalisisMercado, ValoracionArriendoActual, PotencialValorizacionConMejorasExplicado } from "@/app/appraisal/types/appraisal-results";
+import { AppraisalResult } from "@/app/appraisal/types/appraisal-results";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AppraisalDetailModal from "@/components/AppraisalDetailModal";
 import { useToast } from "@/hooks/use-toast";
@@ -250,6 +250,15 @@ export default function History() {
                         <p>
                           Canon Mensual Estimado:{" "}
                           {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisal.valoracion_arriendo_actual.estimacion_canon_mensual_cop)}
+                        </p>
+                      )}
+                      {appraisal.analisis_legal_arrendamiento?.restricciones_legales_identificadas && appraisal.analisis_legal_arrendamiento.restricciones_legales_identificadas.length > 0 && (
+                        <p>Restricciones Legales: {appraisal.analisis_legal_arrendamiento.restricciones_legales_identificadas.join(', ')}</p>
+                      )}
+                      {appraisal.potencial_valorizacion_con_mejoras_explicado?.canon_potencial_total_estimado_cop && (
+                        <p>
+                          Canon Potencial con Mejoras:{" "}
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisal.potencial_valorizacion_con_mejoras_explicado.canon_potencial_total_estimado_cop)}
                         </p>
                       )}
                     </div>
