@@ -1,19 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { appraisalApiService } from "@/app/services/appraisalApiService";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Mail } from "lucide-react";
+import { useSupabase } from "@/components/supabase-provider"; // Importar useSupabase
+import { useAuth } from "@/hooks/useAuth"; // Importar useAuth
+import { useToast } from "@/hooks/use-toast"; // Importar useToast
 
-const authSchema = z.object({
+const loginSchema = z.object({
+  email: z.string().email("Correo electrónico inválido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres")
+    .regex(/[A-Z]/, "Debe contener al menos una mayúscula")
+    .regex(/[0-9]/, "Debe contener al menos un número")
+    .regex(/[^A-Za-z0-9]/, "Debe contener al menos un carácter especial"),
+});
+
+const registerSchema = z.object({
   fullName: z.string().min(2, "Nombre muy corto"),
   lastName: z.string().min(2, "Apellido muy corto"),
   idNumber: z.string().min(8, "Número de cédula inválido"),
@@ -25,30 +36,44 @@ const authSchema = z.object({
     .regex(/[^A-Za-z0-9]/, "Debe contener al menos un carácter especial"),
 });
 
-type AuthFormData = z.infer<typeof authSchema>;
+type LoginFormData = z.infer<typeof loginSchema>;
+type RegisterFormData = z.infer<typeof registerSchema>;
+
+type AuthFormData = LoginFormData & Partial<RegisterFormData>; // Combinar tipos para el formulario
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const searchParams = useSearchParams();
+  const [isLogin, setIsLogin] = useState(searchParams.get("register") !== "true");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { supabase } = useSupabase(); // Obtener la instancia de supabase del contexto
+  const { session } = useAuth(); // Obtener la sesión de useAuth
+  const { toast } = useToast(); // Obtener la función toast
 
   const { register, handleSubmit, formState: { errors } } = useForm<AuthFormData>({
-    resolver: zodResolver(authSchema),
+    resolver: zodResolver(isLogin ? loginSchema : registerSchema),
   });
 
   const handleAuth = async (data: AuthFormData) => {
     setLoading(true);
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
           email: data.email,
           password: data.password,
         });
-        if (error) throw error;
+
+        if (loginError) {
+          throw new Error(loginError.message);
+        }
+        toast({
+          title: "Inicio de sesión exitoso",
+          description: "Has iniciado sesión correctamente.",
+        });
         router.push("/");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: data.email,
           password: data.password,
           options: {
@@ -60,25 +85,58 @@ export default function Auth() {
             },
           },
         });
-        if (error) throw error;
-        // Show success message and switch to login
-        setIsLogin(true);
+
+        if (signUpError) {
+          throw new Error(signUpError.message);
+        }
+
+        toast({
+          title: "Registro exitoso",
+          description: "Por favor, verifica tu correo electrónico para completar el registro.",
+        });
+        setIsLogin(true); // Cambiar a la vista de inicio de sesión después del registro
       }
-    } catch (error) {
-      console.error("Error:", error);
+    } catch (error: any) {
+      console.error("Error de autenticación:", error.message);
+      toast({
+        title: "Error de autenticación",
+        description: error.message || "Ocurrió un error durante la autenticación.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleAuth = async () => {
+    setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`, // Asegúrate de que esta URL esté configurada en Supabase
+        },
       });
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error:", error);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data.url) {
+        // Supabase redirigirá automáticamente al usuario a la URL de autenticación de Google
+        // No necesitamos hacer window.location.href aquí, Supabase lo maneja
+      } else {
+        throw new Error("URL de redirección de Google no proporcionada.");
+      }
+    } catch (error: any) {
+      console.error("Error de autenticación con Google:", error.message);
+      toast({
+        title: "Error de autenticación con Google",
+        description: error.message || "Ocurrió un error durante la autenticación con Google.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 

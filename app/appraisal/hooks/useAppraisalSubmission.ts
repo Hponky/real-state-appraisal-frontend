@@ -5,8 +5,9 @@ import { MaterialQualityEntry } from "./useMaterialQualityEntries";
 import { appraisalApiService } from "../../services/appraisalApiService";
 import { v4 as uuidv4 } from 'uuid';
 import { User, RealtimePostgresChangesPayload } from '@supabase/supabase-js'; // Importar tipos necesarios de supabase-js
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth'; // Importar el hook useAuth
 import { useSupabase } from '@/components/supabase-provider'; // Importar el hook del proveedor
+import { useToast } from "@/hooks/use-toast"; // Importar useToast
 
 
 interface UseAppraisalSubmissionProps {
@@ -15,7 +16,8 @@ interface UseAppraisalSubmissionProps {
     materialQualityEntries: MaterialQualityEntry[];
     setErrors: Dispatch<SetStateAction<Record<string, string>>>;
     clearImageErrors: () => void;
-    validateForm: () => boolean; // Add validateForm to the interface
+    setValue: (name: any, value: any, options?: { shouldValidate?: boolean; shouldDirty?: boolean; shouldTouch?: boolean }) => void;
+    trigger: (name?: any | readonly any[]) => Promise<boolean>;
 }
 
 export function useAppraisalSubmission({
@@ -24,20 +26,22 @@ export function useAppraisalSubmission({
     materialQualityEntries,
     setErrors,
     clearImageErrors,
+    setValue,
+    trigger,
 }: UseAppraisalSubmissionProps) {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false); // Declarar isSubmitting como estado local
     const [requestId, setRequestId] = useState<string | null>(null); // Estado para guardar el requestId
+    const { toast } = useToast(); // Obtener la función toast
 
-    // Usar el hook useAuth para obtener el usuario y el estado de carga
-    const { user, isLoading } = useAuth();
+    // Usar el hook useAuth para obtener el usuario, la sesión y el estado de carga
+    const { user, session, isLoading } = useAuth();
     // Obtener la instancia de Supabase del proveedor
     const { supabase } = useSupabase();
 
 
     const submitFormData = useCallback(async (data: AppraisalFormData) => {
         // event.preventDefault() no es necesario aquí, handleSubmit de react-hook-form ya lo maneja
-        console.log("Iniciando submitFormData...");
         clearImageErrors();
         setIsSubmitting(true);
         setErrors(prev => {
@@ -45,13 +49,9 @@ export function useAppraisalSubmission({
             delete newErrors.submit;
             return newErrors;
         });
-        console.log("DEBUG: Form data:", formData); // Log de los datos del formulario
-        console.log("DEBUG: Image files count:", imageFiles.length); // Log del número de archivos de imagen
-        console.log("DEBUG: Material quality entries count:", materialQualityEntries.length); // Log del número de entradas de calidad de material
 
         // Esperar a que el estado de autenticación se cargue antes de proceder
         if (isLoading) {
-            console.log("Auth state is loading, waiting...");
             setIsSubmitting(false); // Asegurarse de que el estado de submitting sea falso mientras carga auth
             return; // Detener la ejecución hasta que auth state esté listo
         }
@@ -59,21 +59,21 @@ export function useAppraisalSubmission({
         // Si no hay usuario después de que el estado de auth se cargó, algo salió mal
         if (!user) {
              console.error('No user available after auth state loaded.');
-             setErrors(prev => ({ ...prev, submit: 'No se pudo obtener información del usuario después de cargar el estado de autenticación.' }));
+             toast({
+               title: "Error de usuario",
+               description: "No se pudo obtener información del usuario después de cargar el estado de autenticación.",
+               variant: "destructive",
+             });
              setIsSubmitting(false);
              return;
         }
 
         const newRequestId = uuidv4();
         setRequestId(newRequestId); // Guardar el requestId en el estado
-        console.log(`DEBUG: Generated new requestId: ${newRequestId}`); // Log del requestId generado
 
         try {
-            console.log(`Using user ID: ${user.id}`);
 
             // 1. Iniciar la creación de entrada pendiente en Supabase
-            console.log(`DEBUG: user.id antes de insertar en appraisals: ${user.id}`);
-            console.log("Initiating insert pending entry into Supabase...");
             const dataToInsert = {
                 id: newRequestId,
                 user_id: user.id, // Incluir el user_id
@@ -81,28 +81,25 @@ export function useAppraisalSubmission({
                 status: 'pending',
                 created_at: new Date().toISOString(),
             };
-            console.log("Data being sent to Supabase:", dataToInsert);
 
             // Usar await para la inserción para asegurar que la fila existe antes de llamar a n8n
-            console.log("DEBUG: User object before Supabase insert:", user); // Log del objeto user
-            console.log("DEBUG: user.id before Supabase insert:", user?.id); // Log del user.id
-            console.log("DEBUG: Attempting to insert initial data into Supabase..."); // Log antes de la inserción
             const { error: insertError } = await supabase
                 .from('appraisals')
                 .insert([dataToInsert]);
 
             if (insertError) {
                 console.error('Supabase Insert Operation Error:', insertError); // Log de error de inserción
-                console.error('Supabase Insert Operation Error:', insertError);
-                setErrors(prev => ({ ...prev, submit: `Error al guardar el peritaje inicial: ${insertError.message}` }));
+                toast({
+                  title: "Error al guardar peritaje",
+                  description: `Error al guardar el peritaje inicial: ${insertError.message}`,
+                  variant: "destructive",
+                });
                 setIsSubmitting(false);
                 return; // Detener el proceso si falla la inserción
             }
 
-            console.log("DEBUG: Supabase insert operation successful."); // Log de éxito de inserción
 
             // Convertir imágenes a Base64
-            console.log("Attempting to convert images to Base64...");
             const base64Images = await Promise.all(
                 imageFiles.map(file => {
                     return new Promise<string>((resolve, reject) => {
@@ -113,41 +110,44 @@ export function useAppraisalSubmission({
                     });
                 })
             );
-            console.log("DEBUG: Image conversion to Base64 completed.");
-            console.log(`DEBUG: Converted ${base64Images.length} images to Base64.`);
 
-            // Preparar datos para enviar a n8n (incluyendo el requestId y las imágenes)
-            const dataForN8n = {
-                requestId: newRequestId,
-                ...formData,
-                materialQualityEntries: materialQualityEntries.filter(
-                    entry => entry.location.trim() !== '' || entry.qualityDescription.trim() !== ''
-                ),
-                imagesBase64: base64Images,
+const dataForN8n = {
+    requestId: newRequestId,
+    ...(() => {
+        const { images, ...rest } = formData;
+        return rest;
+    })(),
+    imagesBase64: base64Images,
+    materialQualityEntries: materialQualityEntries.filter(
+        entry => entry.location.trim() !== '' || entry.qualityDescription.trim() !== ''
+    ),
             };
 
             // 2. Llamar a appraisalApiService para activar n8n
-            console.log("DEBUG: Calling appraisalApiService.submitAppraisal..."); // Log antes de llamar al servicio
-            await appraisalApiService.submitAppraisal(newRequestId, dataForN8n);
-            console.log("DEBUG: appraisalApiService.submitAppraisal call finished."); // Log después de llamar al servicio
+            if (!session?.access_token) {
+                throw new Error("No se encontró el token de autenticación. Por favor, inicie sesión.");
+            }
+            await appraisalApiService.submitAppraisal(newRequestId, dataForN8n, session.access_token);
 
-            console.log(`Appraisal initiated with ID: ${newRequestId}. Waiting for results via Realtime...`);
 
             // NOTA: La lógica de espera y redirección ahora se maneja en el useEffect de suscripción a Realtime.
             // setIsSubmitting(false) se manejará cuando se reciba el estado final via Realtime o en caso de error.
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error during form submission process (general catch):", error);
-            setErrors(prev => ({ ...prev, submit: `Error general al enviar el formulario. ${error instanceof Error ? error.message : 'Por favor, intente de nuevo.'}` }));
+            toast({
+              title: "Error al enviar formulario",
+              description: error.message || "Ocurrió un error general al enviar el formulario. Por favor, intente de nuevo.",
+              variant: "destructive",
+            });
             setIsSubmitting(false);
         }
-    }, [formData, imageFiles, materialQualityEntries, setErrors, clearImageErrors, setIsSubmitting, user, supabase, isLoading]); // Eliminar router de dependencias
+    }, [formData, imageFiles, materialQualityEntries, setErrors, clearImageErrors, user, session, supabase, isLoading, toast]);
 
     // useEffect para manejar la suscripción a Supabase Realtime
     useEffect(() => {
         if (!requestId || !supabase) return; // No suscribirse si no hay requestId o supabase cliente
 
-        console.log(`Subscribing to Supabase changes for requestId: ${requestId}`);
 
         const channel = supabase
             .channel(`appraisal_status_${requestId}`) // Nombre único del canal
@@ -160,42 +160,45 @@ export function useAppraisalSubmission({
                     filter: `id=eq.${requestId}`, // Filtrar por el requestId específico
                 },
                 (payload: RealtimePostgresChangesPayload<any>) => { // Añadir anotación de tipo
-                    console.log('DEBUG: Realtime UPDATE callback triggered.'); // Nuevo log aquí
-                    console.log('DEBUG: Realtime UPDATE received:', payload);
                     const updatedAppraisal = payload.new;
 
                     if (updatedAppraisal && updatedAppraisal.status === 'completed') {
-                        console.log("DEBUG: Appraisal completed via Realtime. Redirecting...");
-                        console.log("Appraisal completed via Realtime. Redirecting...");
-                        console.log(`DEBUG: Attempting to redirect to: /appraisal/results?id=${requestId}`); // Log antes de push
+                        toast({
+                          title: "Peritaje completado",
+                          description: "El peritaje se ha completado exitosamente.",
+                        });
                         router.push(`/appraisal/results?id=${requestId}`);
-                        console.log("DEBUG: router.push called."); // Log después de push
                         setIsSubmitting(false); // Finalizar estado de submitting
                     } else if (updatedAppraisal && updatedAppraisal.status === 'failed') {
                          console.error("DEBUG: Appraisal failed via Realtime:", updatedAppraisal.error);
-                         setErrors(prev => ({ ...prev, submit: `El peritaje falló: ${updatedAppraisal.error || 'Error desconocido'}` }));
+                         toast({
+                           title: "Peritaje fallido",
+                           description: `El peritaje falló: ${updatedAppraisal.error || 'Error desconocido'}`,
+                           variant: "destructive",
+                         });
                          setIsSubmitting(false); // Finalizar estado de submitting
                     }
                 }
             )
-             .subscribe((status, err) => { // Eliminar anotaciones de tipo explícitas
+             .subscribe((status, err: any) => { // Añadir anotación de tipo para err
                  if (status === 'SUBSCRIBED') {
-                     console.log(`DEBUG: Subscribed to channel appraisal_status_${requestId}`);
                  } else if (status === 'CHANNEL_ERROR') { // Log para errores del canal
                       console.error('DEBUG: Supabase Realtime Channel Error:', err);
                  } else {
-                      console.log(`DEBUG: Supabase Realtime Subscription status changed: ${status}`); // Log para otros estados
                  }
                  if (err) {
                      console.error('DEBUG: Supabase Realtime Subscription Error:', err);
-                     setErrors(prev => ({ ...prev, submit: `Error en la suscripción en tiempo real: ${err.message}` }));
+                     toast({
+                       title: "Error de suscripción",
+                       description: `Error en la suscripción en tiempo real: ${err.message}`,
+                       variant: "destructive",
+                     });
                      setIsSubmitting(false); // Finalizar estado de submitting en caso de error de suscripción
                  }
              });
 
         // Función de limpieza para desuscribirse cuando el componente se desmonte o requestId cambie
         return () => {
-            console.log(`DEBUG: Unsubscribing from channel appraisal_status_${requestId}`);
             supabase.removeChannel(channel);
         };
 

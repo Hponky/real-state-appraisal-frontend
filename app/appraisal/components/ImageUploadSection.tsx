@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Upload } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image"; // Import Image component
 
 interface ImageUploadSectionProps {
     images: string[];
@@ -55,10 +56,12 @@ export function ImageUploadSection({
                         transition={{ duration: 0.2 }}
                         className="relative group aspect-square"
                     >
-                        <img
+                        <Image
                             src={image}
                             alt={`Property ${index + 1}`}
-                            className="w-full h-full object-cover rounded-lg border"
+                            fill // Use fill to make image take up parent's size
+                            className="object-cover rounded-lg border"
+                            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw" // Responsive sizes
                         />
                         <Button
                             type="button"

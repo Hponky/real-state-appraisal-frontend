@@ -7,29 +7,38 @@ import LabelWithHint from "./LabelWithHint";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { declaratoriaRestrictionsOptions } from './declaratoria-especial/declaratoriaRestrictionsOptions';
 import { CommonRestrictionsCheckboxes } from './declaratoria-especial/CommonRestrictionsCheckboxes';
 import { OtherRestrictionsRadioGroup } from './declaratoria-especial/OtherRestrictionsRadioGroup';
 
 // Opciones para restricciones POT
 const potRestrictionsOptions = [
-  'Restricción de uso del suelo',
-  'Restricción de edificabilidad',
-  'Restricción de altura',
-  'Afectación por vía pública',
-  'Afectación por ronda hídrica',
-  'Afectación por infraestructura de servicios públicos',
-  'Otra restricción POT',
+  { id: 'pot_restriccion_uso_suelo', label: 'Restricción de uso del suelo' },
+  { id: 'pot_restriccion_edificabilidad', label: 'Restricción de edificabilidad' },
+  { id: 'pot_restriccion_altura', label: 'Restricción de altura' },
+  { id: 'pot_afectacion_via_publica', label: 'Afectación por vía pública' },
+  { id: 'pot_afectacion_ronda_hidrica', label: 'Afectación por ronda hídrica' },
+  { id: 'pot_afectacion_infraestructura_servicios_publicos', label: 'Afectación por infraestructura de servicios públicos' },
+  { id: 'pot_otra_restriccion_pot', label: 'Otra restricción POT' },
 ];
+
+const potRestrictionPlaceholders: Record<string, string> = {
+  pot_restriccion_uso_suelo: "Ej: Uso residencial permitido, pero no comercial; Uso mixto con restricciones de horario",
+  pot_restriccion_edificabilidad: "Ej: Coeficiente de ocupación máximo del 0.7; Altura máxima de 5 pisos",
+  pot_restriccion_altura: "Ej: Altura máxima de 15 metros; Prohibición de construir por encima de la cota 1800",
+  pot_afectacion_via_publica: "Ej: Afectación por futura ampliación de la Calle 10; Servidumbre de paso para vía peatonal",
+  pot_afectacion_ronda_hidrica: "Ej: Parte del predio en zona de protección de río; Restricción por quebrada o humedal cercano",
+  pot_afectacion_infraestructura_servicios_publicos: "Ej: Servidumbre de paso para tubería de acueducto; Afectación por línea de alta tensión",
+  pot_otra_restriccion_pot: "Ej: Restricción por plan parcial de desarrollo; Limitación por área de expansión urbana"
+};
 
 interface SectionCFieldsProps {
   formData: AppraisalFormData;
   errors: Record<string, string>;
   handleStringChange: (field: keyof AppraisalFormData, value: string) => void;
   handleBooleanChange: (field: keyof AppraisalFormData, checked: boolean) => void;
-  handlePotRestrictionsChange: (value: string[]) => void;
+  handlePotRestrictionChange: (field: keyof AppraisalFormData, selected: boolean, description?: string) => void;
   handleZonaDeclaratoriaChange: (
-    field: 'aplica' | 'tipo' | 'fuente' | 'otras_restricciones_seleccion' | 'otras_restricciones_descripcion' | 'restricciones_comunes_descripcion',
+    field: 'aplica' | 'tipo' | 'fuente' | 'otras_restricciones_seleccion' | 'otras_restricciones_descripcion' | 'restricciones_comunes_descripcion' | 'declaratoriaImponeObligaciones',
     value: boolean | string | undefined
   ) => void;
   handleZonaDeclaratoriaRestriccionesChange: (restriction: string, checked: boolean) => void;
@@ -40,11 +49,11 @@ const SectionCFields: React.FC<SectionCFieldsProps> = ({
   errors,
   handleStringChange,
   handleBooleanChange,
-  handlePotRestrictionsChange,
+  handlePotRestrictionChange,
   handleZonaDeclaratoriaChange,
   handleZonaDeclaratoriaRestriccionesChange,
 }) => {
-  const showOtherPotRestrictionTextarea = formData.pot_restrictions?.includes('Otra restricción POT');
+  const showOtherPotRestrictionTextarea = formData.pot_otra_restriccion_pot?.selected;
 
   return (
     <div className="space-y-4">
@@ -59,19 +68,25 @@ const SectionCFields: React.FC<SectionCFieldsProps> = ({
         />
         <div className="space-y-2">
           {potRestrictionsOptions.map((option) => (
-            <div key={option} className="flex items-center space-x-2">
+            <div key={option.id} className="flex items-center space-x-2">
               <Checkbox
-                id={`pot_restriccion_${option.replace(/\s+/g, '_').toLowerCase()}`}
-                checked={formData.pot_restrictions?.includes(option) || false}
+                id={option.id}
+                checked={(formData[option.id as keyof AppraisalFormData] as any)?.selected || false}
                 onCheckedChange={(checked: boolean) => {
-                  const currentRestrictions = formData.pot_restrictions || [];
-                  const newRestrictions = checked
-                    ? [...currentRestrictions, option]
-                    : currentRestrictions.filter((r) => r !== option);
-                  handlePotRestrictionsChange(newRestrictions);
+                  handlePotRestrictionChange(option.id as keyof AppraisalFormData, checked);
                 }}
               />
-              <Label htmlFor={`pot_restriccion_${option.replace(/\s+/g, '_').toLowerCase()}`}>{option}</Label>
+              <Label htmlFor={option.id}>{option.label}</Label>
+              {/* Campo de descripción opcional para cada restricción POT */}
+              {(formData[option.id as keyof AppraisalFormData] as any)?.selected && option.id !== 'pot_otra_restriccion_pot' && (
+                <Input
+                  id={`${option.id}_description`}
+                  value={(formData[option.id as keyof AppraisalFormData] as any)?.description || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePotRestrictionChange(option.id as keyof AppraisalFormData, true, e.target.value)}
+                  placeholder={potRestrictionPlaceholders[option.id] || "Describir restricción"}
+                  className="ml-4"
+                />
+              )}
             </div>
           ))}
           {showOtherPotRestrictionTextarea && (
@@ -79,14 +94,13 @@ const SectionCFields: React.FC<SectionCFieldsProps> = ({
               <Label htmlFor="pot_otras_restricciones_descripcion">Especificar otra restricción POT</Label>
               <Textarea
                 id="pot_otras_restricciones_descripcion"
-                value={formData.pot_otras_restricciones_descripcion || ''}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleStringChange('pot_otras_restricciones_descripcion', e.target.value)}
+                value={formData.pot_otra_restriccion_pot?.description || ''}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handlePotRestrictionChange('pot_otra_restriccion_pot', true, e.target.value)}
               />
-              {errors.pot_otras_restricciones_descripcion && <p className="text-sm text-destructive">{errors.pot_otras_restricciones_descripcion}</p>}
+              {errors['pot_otra_restriccion_pot.description'] && <p className="text-sm text-destructive">{errors['pot_otra_restriccion_pot.description']}</p>}
             </div>
           )}
         </div>
-        {errors.pot_restrictions && <p className="text-sm text-destructive">{errors.pot_restrictions}</p>}
       </div>
 
       {/* Checkbox para zona_declaratoria_especial.aplica */}
@@ -139,22 +153,6 @@ const SectionCFields: React.FC<SectionCFieldsProps> = ({
             errors={errors}
           />
 
-          {/* Campo de texto para descripción adicional de restricciones comunes */}
-          {/* Este textarea ahora se maneja dentro de CommonRestrictionsCheckboxes */}
-          {/* <div className="space-y-2">
-            <LabelWithHint
-              htmlFor="zona_declaratoria_especial_restricciones_comunes_descripcion"
-              labelText="Descripción Adicional de Restricciones Comunes"
-              hintText="Describa cualquier restricción común adicional no cubierta por las opciones anteriores."
-            />
-            <Textarea
-              id="zona_declaratoria_especial_restricciones_comunes_descripcion"
-              value={formData.zona_declaratoria_especial?.restricciones_comunes_descripcion || ''}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleZonaDeclaratoriaChange('restricciones_comunes_descripcion', e.target.value)}
-            />
-            {errors['zona_declaratoria_especial.restricciones_comunes_descripcion'] && <p className="text-sm text-destructive">{errors['zona_declaratoria_especial.restricciones_comunes_descripcion']}</p>}
-          </div> */}
-
           <OtherRestrictionsRadioGroup
             selectedValue={formData.zona_declaratoria_especial?.otras_restricciones_seleccion}
             otherRestrictionsText={formData.zona_declaratoria_especial?.otras_restricciones_descripcion}
@@ -171,6 +169,23 @@ const SectionCFields: React.FC<SectionCFieldsProps> = ({
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleZonaDeclaratoriaChange('fuente', e.target.value)}
             />
             {errors['zona_declaratoria_especial.fuente'] && <p className="text-sm text-destructive">{errors['zona_declaratoria_especial.fuente']}</p>}
+          </div>
+
+          {/* Nuevo campo para declaratoriaImponeObligaciones */}
+          <div className="space-y-2">
+            <LabelWithHint
+              htmlFor="declaratoriaImponeObligaciones"
+              labelText="¿Esta declaratoria impone obligaciones económicas o de mantenimiento específicas al propietario?"
+              hintText="Indique si la declaratoria especial conlleva responsabilidades financieras o de conservación para el propietario del inmueble."
+            />
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="declaratoriaImponeObligaciones"
+                checked={formData.zona_declaratoria_especial?.declaratoriaImponeObligaciones || false}
+                onCheckedChange={(checked: boolean) => handleZonaDeclaratoriaChange('declaratoriaImponeObligaciones', checked)}
+              />
+            </div>
+            {errors['zona_declaratoria_especial.declaratoriaImponeObligaciones'] && <p className="text-sm text-destructive">{errors['zona_declaratoria_especial.declaratoriaImponeObligaciones']}</p>}
           </div>
         </div>
       )}

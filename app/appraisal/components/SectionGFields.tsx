@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import LabelWithHint from "./LabelWithHint"; // Although not used in this section currently, it's good practice to import if there's a chance of future use or for consistency.
+import LabelWithHint from "./LabelWithHint";
 
 interface SectionGFieldsProps {
   formData: AppraisalFormData;
@@ -55,8 +55,8 @@ const SectionGFields: React.FC<SectionGFieldsProps> = ({
       <div className="flex items-center space-x-2">
         <Checkbox
           id="documento_paz_salvo_administracion"
-          checked={formData.documento_paz_salvo_administracion === 'sí'} // Assuming 'sí' indicates available
-          onCheckedChange={(checked) => handleStringChange('documento_paz_salvo_administracion', checked ? 'sí' : 'no')}
+          checked={formData.documento_paz_salvo_administracion || false}
+          onCheckedChange={(checked) => handleBooleanChange('documento_paz_salvo_administracion', checked === true)}
         />
         <Label htmlFor="documento_paz_salvo_administracion">¿Tiene a la mano el Paz y Salvo de Administración?</Label>
       </div>
@@ -65,8 +65,8 @@ const SectionGFields: React.FC<SectionGFieldsProps> = ({
       <div className="flex items-center space-x-2">
         <Checkbox
           id="documento_reglamento_ph"
-          checked={formData.documento_reglamento_ph === 'sí'} // Assuming 'sí' indicates available
-          onCheckedChange={(checked) => handleStringChange('documento_reglamento_ph', checked ? 'sí' : 'no')}
+          checked={formData.documento_reglamento_ph || false}
+          onCheckedChange={(checked) => handleBooleanChange('documento_reglamento_ph', checked === true)}
         />
         <LabelWithHint
           htmlFor="documento_reglamento_ph"
@@ -76,11 +76,22 @@ const SectionGFields: React.FC<SectionGFieldsProps> = ({
       </div>
       {errors.documento_reglamento_ph && <p className="text-sm text-destructive">{errors.documento_reglamento_ph}</p>}
 
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="documento_ficha_predial_catastral"
+          checked={formData.documento_ficha_predial_catastral || false}
+          onCheckedChange={(checked) => handleBooleanChange('documento_ficha_predial_catastral', checked === true)}
+        />
+        <Label htmlFor="documento_ficha_predial_catastral">Ficha Predial Catastral o Boletín Catastral</Label>
+      </div>
+      {errors.documento_ficha_predial_catastral && <p className="text-sm text-destructive">{errors.documento_ficha_predial_catastral}</p>}
+
       <Label htmlFor="documentos_otros">¿Tiene a la mano Otros Documentos Relevantes? ¿Cuáles?</Label>
       <Textarea
         id="documentos_otros"
         value={formData.documentos_otros || ''}
         onChange={(e) => handleStringChange('documentos_otros', e.target.value)}
+        placeholder="Ej: Licencia de construcción, planos arquitectónicos, recibos de servicios públicos, etc."
       />
       {errors.documentos_otros && <p className="text-sm text-destructive">{errors.documentos_otros}</p>}
     </div>

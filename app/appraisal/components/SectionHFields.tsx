@@ -40,13 +40,33 @@ const SectionHFields: React.FC<SectionHFieldsProps> = ({
 
       <div className="flex items-center space-x-2">
         <Checkbox
-          id="declaracion_impuestos_pagados"
-          checked={formData.legal_declarations?.declaracion_impuestos_pagados || false}
-          onCheckedChange={(checked) => handleLegalBooleanChange('declaracion_impuestos_pagados', checked === true)}
+          id="informacionVerazCompleta"
+          checked={formData.legal_declarations?.informacionVerazCompleta || false}
+          onCheckedChange={(checked) => handleLegalBooleanChange('informacionVerazCompleta', checked === true)}
         />
-        <Label htmlFor="declaracion_impuestos_pagados">Impuesto Predial al Día</Label>
+        <Label htmlFor="informacionVerazCompleta">Declaro que la información proporcionada es veraz y completa.</Label>
       </div>
-      {errors['legal_declarations.declaracion_impuestos_pagados'] && <p className="text-sm text-destructive">{errors['legal_declarations.declaracion_impuestos_pagados']}</p>}
+      {errors['legal_declarations.informacionVerazCompleta'] && <p className="text-sm text-destructive">{errors['legal_declarations.informacionVerazCompleta']}</p>}
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="entendimientoAnalisisLegal"
+          checked={formData.legal_declarations?.entendimientoAnalisisLegal || false}
+          onCheckedChange={(checked) => handleLegalBooleanChange('entendimientoAnalisisLegal', checked === true)}
+        />
+        <Label htmlFor="entendimientoAnalisisLegal">Entiendo el alcance del análisis legal y sus implicaciones.</Label>
+      </div>
+      {errors['legal_declarations.entendimientoAnalisisLegal'] && <p className="text-sm text-destructive">{errors['legal_declarations.entendimientoAnalisisLegal']}</p>}
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="autorizacionTratamientoDatos"
+          checked={formData.legal_declarations?.autorizacionTratamientoDatos || false}
+          onCheckedChange={(checked) => handleLegalBooleanChange('autorizacionTratamientoDatos', checked === true)}
+        />
+        <Label htmlFor="autorizacionTratamientoDatos">Autorizo el tratamiento de mis datos personales para el peritaje.</Label>
+      </div>
+      {errors['legal_declarations.autorizacionTratamientoDatos'] && <p className="text-sm text-destructive">{errors['legal_declarations.autorizacionTratamientoDatos']}</p>}
     </div>
   );
 };

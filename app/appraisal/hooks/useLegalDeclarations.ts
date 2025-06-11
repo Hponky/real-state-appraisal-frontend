@@ -50,8 +50,12 @@ export function useLegalDeclarations(
         setValue('gravamenes_cargas_otros', '');
         setValue('litigios_proceso_judicial_seleccionados', []);
         setValue('litigios_proceso_judicial_otros', '');
-        setValue('legal_documents', []);
-        setValue('public_services', []);
+        setValue('documento_certificado_tradicion_libertad', false);
+        setValue('documento_escritura_publica', false);
+        setValue('documento_recibo_impuesto_predial', false);
+        setValue('documento_paz_salvo_administracion', false);
+        setValue('documento_reglamento_ph', false);
+        setValue('documentos_otros', '');
         setValue('legal_declarations', {
           declaracion_veracidad: false,
           entendimiento_alcance_analisis: false,

@@ -11,6 +11,8 @@ import { useFormErrorManagement } from "./useFormErrorManagement";
 import { usePHFields } from "./usePHFields";
 import { useDeclaratoriaEspecialFields } from "./useDeclaratoriaEspecialFields";
 import { useLegalDeclarations } from "./useLegalDeclarations";
+import { useEffect, useState } from "react";
+import { getPreFilledAppraisalFormData, getPreFilledMaterialQualityEntries } from "../utils/appraisalFormFiller";
 
 export default function useAppraisalForm() {
   const router = useRouter();
@@ -20,16 +22,18 @@ export default function useAppraisalForm() {
     defaultValues: {
       department: "",
       city: "",
-      neighborhood: "",
       address: "",
-      cadastral_certificate: "",
+      built_area: 0, // Inicializar built_area con 0
+      documento_ficha_predial_catastral: false,
       property_type: "",
-      built_area: 0,
-      private_area: 0,
-      number_of_floors: 0,
-      estrato: "",
-      pot_restrictions: [],
-      pot_otras_restricciones_descripcion: '',
+      estrato: "1", // Inicializar con un valor válido para el estrato
+      pot_restriccion_uso_suelo: { selected: false, description: '' },
+      pot_restriccion_edificabilidad: { selected: false, description: '' },
+      pot_restriccion_altura: { selected: false, description: '' },
+      pot_afectacion_via_publica: { selected: false, description: '' },
+      pot_afectacion_ronda_hidrica: { selected: false, description: '' },
+      pot_afectacion_infraestructura_servicios_publicos: { selected: false, description: '' },
+      pot_otra_restriccion_pot: { selected: false, description: '' },
       zona_declaratoria_especial: {
         aplica: false,
         tipo: undefined,
@@ -39,17 +43,16 @@ export default function useAppraisalForm() {
         otras_restricciones_descripcion: '',
         fuente: '',
       },
-      construction_year: 0,
-      structural_type: "",
-      facade_type: "",
       gravamenes_cargas_seleccionados: [],
       gravamenes_cargas_otros: "",
       litigios_proceso_judicial_seleccionados: [],
       litigios_proceso_judicial_otros: "",
-      urban_planning: "",
-      access_roads: "",
-      public_services: [],
-      legal_documents: [],
+      documento_certificado_tradicion_libertad: false,
+      documento_escritura_publica: false,
+      documento_recibo_impuesto_predial: false,
+      documento_paz_salvo_administracion: false,
+      documento_reglamento_ph: false,
+      documentos_otros: '',
       legal_declarations: {
         declaracion_veracidad: false,
         entendimiento_alcance_analisis: false,
@@ -64,7 +67,7 @@ export default function useAppraisalForm() {
         declaracion_informacion_completa: false,
       },
       expectedValue: 0,
-      images: [],
+      images: [new File([], 'initial_dummy.jpg')], // Inicializar images con un archivo dummy
       ph_aplica: false,
       ph_sometido_ley_675: false,
       ph_reglamento_interno: false,
@@ -88,6 +91,20 @@ export default function useAppraisalForm() {
     getValues,
     trigger,
   } = methods;
+
+  const [useTestValues, setUseTestValues] = useState(false); // Nuevo estado para el switch
+
+  useEffect(() => {
+    if (useTestValues) {
+      const testData = getPreFilledAppraisalFormData();
+      for (const key in testData) {
+        if (testData.hasOwnProperty(key)) {
+          // @ts-ignore
+          setValue(key, testData[key], { shouldValidate: true });
+        }
+      }
+    }
+  }, [useTestValues, setValue]);
 
   const formData = watch();
 
@@ -120,6 +137,11 @@ export default function useAppraisalForm() {
     clearImageErrors,
   } = useImageHandler();
 
+  // Actualizar el campo 'images' del formulario con los objetos File reales
+  useEffect(() => {
+    setValue('images', imageFiles, { shouldValidate: true });
+  }, [imageFiles, setValue]);
+
   const { setErrors } = useFormErrorManagement();
 
   const {
@@ -148,8 +170,19 @@ export default function useAppraisalForm() {
     materialQualityEntries,
     setErrors,
     clearImageErrors,
-    validateForm,
+    setValue, // Pasar setValue
+    trigger,  // Pasar trigger
   });
+
+  // Guardar el requestId en localStorage si existe y no hay un usuario autenticado
+  useEffect(() => {
+    if (formData.requestId && !methods.formState.isSubmitting) {
+      const anonymousSessionId = localStorage.getItem('anonymous_session_id');
+      if (!anonymousSessionId) {
+        localStorage.setItem('anonymous_session_id', formData.requestId);
+      }
+    }
+  }, [formData.requestId, methods.formState.isSubmitting]);
 
   return {
     ...methods,
@@ -172,7 +205,9 @@ export default function useAppraisalForm() {
     handleNumericChange: (field: keyof AppraisalFormData, value: string | number) => setValue(field, value, { shouldValidate: true }),
     handleStringChange: (field: keyof AppraisalFormData, value: string) => setValue(field, value, { shouldValidate: true }),
     handleBooleanChange: (field: keyof AppraisalFormData, value: boolean) => setValue(field, value, { shouldValidate: true }),
-    handlePotRestrictionsChange: (value: string[]) => setValue('pot_restrictions', value, { shouldValidate: true }),
+    handlePotRestrictionChange: (field: keyof AppraisalFormData, selected: boolean, description?: string) => {
+      setValue(field, { selected, description }, { shouldValidate: true });
+    },
     handlePHBooleanChange,
     handlePHStringChange,
     handleZonaDeclaratoriaChange,
@@ -181,5 +216,7 @@ export default function useAppraisalForm() {
     setShowLegalSections,
     handleLegalBooleanChange: (field: keyof AppraisalFormData['legal_declarations'], value: boolean) => setValue(`legal_declarations.${field}`, value, { shouldValidate: true }),
     validateForm,
+    useTestValues, // Exponer el estado del switch
+    setUseTestValues, // Exponer la función para cambiar el estado del switch
   };
 }

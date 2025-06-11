@@ -75,10 +75,9 @@ export const useAppraisalFormValidation = (
       }
     }
 
-    console.log("DEBUG: Validation result - isValid:", isValid, "Errors:", currentErrors);
     setFormErrors(currentErrors);
     return isValid;
-  }, [formData, imageFiles, imageErrors, showLegalSections, setFormErrors, clearImageErrors]);
+  }, [formData, imageFiles, imageErrors, setFormErrors, clearImageErrors]);
 
   return useMemo(() => ({
     validateForm,

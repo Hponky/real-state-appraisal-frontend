@@ -39,13 +39,15 @@ export default function AppraisalForm() {
     handleStringChange,
     handleBooleanChange,
     handleZonaDeclaratoriaChange,
-    handlePotRestrictionsChange,
+    handlePotRestrictionChange,
     handleZonaDeclaratoriaRestriccionesChange,
     showLegalSections,
     setShowLegalSections,
     handleLegalBooleanChange,
     handlePHBooleanChange,
     handlePHStringChange,
+    useTestValues, // Desestructurar el estado del switch
+    setUseTestValues, // Desestructurar la función para cambiar el estado del switch
   } = methods; // Desestructurar los métodos de 'methods'
 
   return (
@@ -63,7 +65,17 @@ export default function AppraisalForm() {
 
           <Card className="max-w-4xl mx-auto p-8">
             <h1 className="text-3xl font-bold mb-2">Ingreso de Datos del Inmueble</h1>
-            <p className="text-muted-foreground mb-8">Complete la información requerida para evaluar su inmueble</p>
+            <p className="text-muted-foreground mb-4">Complete la información requerida para evaluar su inmueble</p>
+
+            {/* Switch para usar datos de prueba */}
+            <div className="flex items-center space-x-2 mb-8">
+              <Switch
+                id="use-test-data"
+                checked={useTestValues}
+                onCheckedChange={setUseTestValues}
+              />
+              <Label htmlFor="use-test-data">Usar datos de prueba (solo para desarrollo)</Label>
+            </div>
 
             {placesError && (
               <div className="mb-4 p-4 bg-destructive/10 text-destructive border border-destructive rounded-md">
@@ -78,7 +90,7 @@ export default function AppraisalForm() {
 
 
             <FormProvider {...methods}> {/* Envolver el formulario con FormProvider */}
-              <form onSubmit={(e) => { console.log("DEBUG: Form onSubmit event triggered."); methods.handleSubmit(submitFormData)(e); }} className="space-y-6" encType="multipart/form-data" method="POST">
+              <form onSubmit={methods.handleSubmit(submitFormData, (errors) => { console.error("Form validation errors (page.tsx):", errors); })} className="space-y-6" encType="multipart/form-data" method="POST">
                 <LocationFields
                     departments={departments}
                     cities={cities}
@@ -142,7 +154,7 @@ export default function AppraisalForm() {
                     handlePHBooleanChange={handlePHBooleanChange}
                     handlePHStringChange={handlePHStringChange}
                     handleLegalBooleanChange={handleLegalBooleanChange}
-                    handlePotRestrictionsChange={handlePotRestrictionsChange}
+                    handlePotRestrictionChange={handlePotRestrictionChange}
                     handleZonaDeclaratoriaRestriccionesChange={handleZonaDeclaratoriaRestriccionesChange}
                   />
                 )}

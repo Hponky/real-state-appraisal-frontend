@@ -1,16 +1,12 @@
 export const appraisalApiService = {
-    submitAppraisal: async (requestId: string, formData: any): Promise<void> => { // Aceptar requestId y formData como objeto
+    submitAppraisal: async (requestId: string, formData: any): Promise<void> => { // Aceptar requestId, formData y accessToken
         try {
-            // Convertir FormData a un objeto JSON si es necesario, o ajustar n8n para recibir FormData
-            // Para simplificar, asumiremos que formData ya es un objeto o se puede convertir fácilmente
-            // Si formData es una instancia de FormData, necesitarás procesarla.
-            // Ejemplo simple si formData es un objeto:
             const requestBody = {
                 requestId: requestId,
                 formData: formData,
             };
 
-            const n8nWebhookUrl = '/api/n8n'; // Usar la ruta local proxied
+            const n8nWebhookUrl = '/api/n8n/recepcion-datos-inmueble'; // Usar la ruta local proxied y especificar el nombre del webhook
             console.log("DEBUG: Calling n8n webhook with URL:", n8nWebhookUrl); // Log antes de fetch
             console.log("DEBUG: n8n webhook request body:", JSON.stringify(requestBody, null, 2)); // Log del cuerpo de la petición
             try {
@@ -50,5 +46,77 @@ export const appraisalApiService = {
            throw error; // Re-throw to be caught by the hook
        
    }
-   }
+   },
+
+   getAppraisalHistory: async (accessToken: string): Promise<any[]> => {
+     try {
+       const response = await fetch('/api/appraisal/history', {
+         method: 'GET',
+         headers: {
+           'Content-Type': 'application/json',
+           'Authorization': `Bearer ${accessToken}`,
+         },
+       });
+
+       if (!response.ok) {
+         const errorData = await response.json();
+         throw new Error(errorData.message || 'Error al obtener el historial de peritajes.');
+       }
+
+       return response.json();
+     } catch (error) {
+       console.error("Error fetching appraisal history:", error);
+       throw error;
+     }
+   },
+
+   downloadPdf: async (appraisalData: any, accessToken: string): Promise<Blob> => {
+     try {
+       console.log("DEBUG: Sending appraisalData for PDF download:", JSON.stringify(appraisalData, null, 2));
+       const response = await fetch('/api/appraisal/download-pdf', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           'Authorization': `Bearer ${accessToken}`,
+         },
+         body: JSON.stringify(appraisalData),
+       });
+
+       if (!response.ok) {
+         const errorData = await response.json();
+         throw new Error(errorData.message || 'Error al descargar el PDF.');
+       }
+
+       return response.blob();
+     } catch (error) {
+       console.error("Error downloading PDF:", error);
+       throw error;
+     }
+   },
+
+   saveAppraisalResult: async (appraisalData: any, userId: string | null, accessToken: string): Promise<void> => {
+     try {
+       const requestBody = {
+         appraisalData: appraisalData,
+         userId: userId,
+       };
+
+       const response = await fetch('/api/appraisal/save-result', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           'Authorization': `Bearer ${accessToken}`,
+         },
+         body: JSON.stringify(requestBody),
+       });
+
+       if (!response.ok) {
+         const errorData = await response.json();
+         throw new Error(errorData.message || 'Error al guardar el resultado del peritaje.');
+       }
+     } catch (error) {
+       console.error("Error saving appraisal result:", error);
+       throw error;
+     }
+   },
 };

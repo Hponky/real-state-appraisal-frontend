@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import SupabaseProvider from '@/components/supabase-provider'; // Importar el proveedor
+import Navbar from '@/components/Navbar'; // Importar el componente Navbar
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,6 +20,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning={true}>
       <body className={inter.className}>
         <SupabaseProvider> {/* Envolver con el proveedor */}
+          <Navbar /> {/* Renderizar el Navbar */}
           {children}
         </SupabaseProvider>
       </body>

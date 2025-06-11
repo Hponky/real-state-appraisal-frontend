@@ -8,13 +8,14 @@ import SectionEFields from './SectionEFields';
 import SectionFFields from './SectionFFields';
 import SectionGFields from './SectionGFields';
 import SectionHFields from './SectionHFields';
+
 interface LegalSectionsProps {
   formData: AppraisalFormData;
   errors: Record<string, string>;
   handleStringChange: (field: keyof AppraisalFormData, value: string) => void;
   handleBooleanChange: (field: keyof AppraisalFormData, checked: boolean) => void;
-  handleZonaDeclaratoriaChange: (field: 'aplica' | 'tipo' | 'restricciones_comunes_descripcion' | 'otras_restricciones_seleccion' | 'otras_restricciones_descripcion' | 'fuente', value: boolean | string | undefined) => void;
-  handlePotRestrictionsChange: (value: string[]) => void; // Cambiado para aceptar string[]
+  handleZonaDeclaratoriaChange: (field: 'aplica' | 'tipo' | 'fuente' | 'otras_restricciones_seleccion' | 'otras_restricciones_descripcion' | 'restricciones_comunes_descripcion' | 'declaratoriaImponeObligaciones', value: boolean | string | undefined) => void;
+  handlePotRestrictionChange: (field: keyof AppraisalFormData, selected: boolean, description?: string) => void;
   handleZonaDeclaratoriaRestriccionesChange: (restriction: string, checked: boolean) => void;
   handlePHBooleanChange: (field: keyof AppraisalFormData, value: boolean) => void;
   handlePHStringChange: (field: keyof AppraisalFormData, value: string) => void;
@@ -30,7 +31,7 @@ const LegalSections: React.FC<LegalSectionsProps> = ({
   handlePHBooleanChange,
   handlePHStringChange,
   handleLegalBooleanChange,
-  handlePotRestrictionsChange,
+  handlePotRestrictionChange,
   handleZonaDeclaratoriaRestriccionesChange,
 }) => {
   return (
@@ -49,7 +50,7 @@ const LegalSections: React.FC<LegalSectionsProps> = ({
         handleStringChange={handleStringChange}
         handleBooleanChange={handleBooleanChange}
         handleZonaDeclaratoriaChange={handleZonaDeclaratoriaChange}
-        handlePotRestrictionsChange={handlePotRestrictionsChange}
+        handlePotRestrictionChange={handlePotRestrictionChange}
         handleZonaDeclaratoriaRestriccionesChange={handleZonaDeclaratoriaRestriccionesChange}
       />
       <SectionDFields
@@ -62,6 +63,7 @@ const LegalSections: React.FC<LegalSectionsProps> = ({
         formData={formData}
         errors={errors}
         handleStringChange={handleStringChange}
+        handleBooleanChange={handleBooleanChange}
       />
       <SectionGFields
         formData={formData}

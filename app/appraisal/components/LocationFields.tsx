@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/select";
 import { useFormContext } from "react-hook-form";
 import { AppraisalFormData } from "../hooks/appraisalFormSchema";
-import { useLocationData } from "../hooks/useLocationData";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
 interface LocationFieldsProps {
@@ -26,9 +25,7 @@ export function LocationFields({
   placesError,
 }: LocationFieldsProps) {
   const { control, formState: { errors }, setValue, watch } = useFormContext<AppraisalFormData>();
-  const formData = watch(); // Obtener los datos del formulario para los valores de los campos
-
-  const { departments: fetchedDepartments, cities: fetchedCities, isLoadingPlaces: isLoadingLocationData, placesError: locationDataError } = useLocationData(formData.department || "");
+  const formData = watch();
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
@@ -42,7 +39,7 @@ export function LocationFields({
               value={field.value}
               onValueChange={(value) => {
                 field.onChange(value);
-                setValue("city", ""); // Reset city when department changes
+                setValue("city", "");
               }}
             >
               <FormControl>
@@ -51,12 +48,12 @@ export function LocationFields({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {!isLoadingLocationData && !locationDataError && fetchedDepartments.map((dept) => (
+                {!isLoadingPlaces && !placesError && departments.map((dept) => (
                   <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                 ))}
-                {(isLoadingLocationData || locationDataError) && (
+                {(isLoadingPlaces || placesError) && (
                   <div className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm text-muted-foreground opacity-50">
-                    {isLoadingLocationData ? "Cargando..." : "Error al cargar"}
+                    {isLoadingPlaces ? "Cargando..." : "Error al cargar"}
                   </div>
                 )}
               </SelectContent>
@@ -75,7 +72,7 @@ export function LocationFields({
             <Select
               value={field.value}
               onValueChange={field.onChange}
-              disabled={!formData.department || fetchedCities.length === 0 || isLoadingLocationData}
+              disabled={!formData.department || cities.length === 0 || isLoadingPlaces}
             >
               <FormControl>
                 <SelectTrigger id="city">
@@ -83,13 +80,13 @@ export function LocationFields({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {!isLoadingLocationData && !locationDataError && formData.department && fetchedCities.length > 0 ? (
-                  fetchedCities.map((city) => (
+                {!isLoadingPlaces && !placesError && formData.department && cities.length > 0 ? (
+                  cities.map((city) => (
                     <SelectItem key={city} value={city}>{city}</SelectItem>
                   ))
                 ) : (
                   <div className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm text-muted-foreground opacity-50">
-                    {isLoadingLocationData ? "Cargando ciudades..." : locationDataError ? "Error al cargar ciudades" : !formData.department ? "Seleccione departamento primero" : "No hay ciudades disponibles"}
+                    {isLoadingPlaces ? "Cargando ciudades..." : placesError ? "Error al cargar ciudades" : !formData.department ? "Seleccione departamento primero" : "No hay ciudades disponibles"}
                   </div>
                 )}
               </SelectContent>

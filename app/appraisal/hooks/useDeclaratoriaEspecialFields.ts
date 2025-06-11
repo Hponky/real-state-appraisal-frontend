@@ -30,7 +30,7 @@ export function useDeclaratoriaEspecialFields(
 
   const handleZonaDeclaratoriaChange = useCallback(
     (
-      field: 'aplica' | 'tipo' | 'fuente' | 'otras_restricciones_seleccion' | 'otras_restricciones_descripcion' | 'restricciones_comunes_descripcion',
+      field: 'aplica' | 'tipo' | 'fuente' | 'otras_restricciones_seleccion' | 'otras_restricciones_descripcion' | 'restricciones_comunes_descripcion' | 'declaratoriaImponeObligaciones',
       value: string | boolean | undefined
     ) => {
       setValue(`zona_declaratoria_especial.${field}`, value, { shouldValidate: true });

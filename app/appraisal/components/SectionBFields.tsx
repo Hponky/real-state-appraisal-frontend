@@ -98,6 +98,29 @@ const SectionBFields: React.FC<SectionBFieldsProps> = ({
             </div>
           </div>
 
+          {/* Nuevos Checkboxes para Sección B */}
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="reglamentoPropiedadHorizontalInscrito"
+                checked={formData.reglamentoPropiedadHorizontalInscrito || false}
+                onCheckedChange={(checked: boolean) => handleBooleanChange('reglamentoPropiedadHorizontalInscrito', checked)}
+              />
+              <Label htmlFor="reglamentoPropiedadHorizontalInscrito">¿Cuenta con el Reglamento de Propiedad Horizontal inscrito?</Label>
+            </div>
+            {errors.reglamentoPropiedadHorizontalInscrito && <p className="text-sm text-destructive">{errors.reglamentoPropiedadHorizontalInscrito}</p>}
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="deudasCuotasAdministracion"
+                checked={formData.deudasCuotasAdministracion || false}
+                onCheckedChange={(checked: boolean) => handleBooleanChange('deudasCuotasAdministracion', checked)}
+              />
+              <Label htmlFor="deudasCuotasAdministracion">¿Existen deudas por cuotas de administración?</Label>
+            </div>
+            {errors.deudasCuotasAdministracion && <p className="text-sm text-destructive">{errors.deudasCuotasAdministracion}</p>}
+          </div>
+
           {/* Select para Tipo de Propiedad en PH */}
           <div className="space-y-2">
             <Label htmlFor="ph_tipo_propiedad">Tipo de Propiedad en Propiedad Horizontal</Label>

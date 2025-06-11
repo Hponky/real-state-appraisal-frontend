@@ -41,7 +41,7 @@ const SectionDFields: React.FC<SectionDFieldsProps> = ({
         value={formData.responsable_servicios_publicos || ''}
         onChange={(e) => handleStringChange('responsable_servicios_publicos', e.target.value)}
       />
-      {errors.responsable_servicios_publicos && <p className="text-sm text-destructive">{errors.responsable_servable_servicios_publicos}</p>}
+      {errors.responsable_servicios_publicos && <p className="text-sm text-destructive">{errors.responsable_servicios_publicos}</p>}
     </div>
   );
 };
