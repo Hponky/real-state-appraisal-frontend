@@ -66,11 +66,11 @@ export default function History() {
               user_id: user?.id || '', // Ensure user_id is present
               created_at: item.createdAt, // Ensure created_at is present
               initial_data: rawAppraisalContent.initial_data || { // Provide default if missing from raw content
-                ciudad: 'N/A',
-                address: 'N/A',
-                area_usuario_m2: 0,
-                tipo_inmueble: 'N/A',
-                estrato: 'N/A',
+                ciudad: rawAppraisalContent.initial_data?.ciudad || 'N/A',
+                address: rawAppraisalContent.initial_data?.address || 'N/A',
+                area_usuario_m2: rawAppraisalContent.initial_data?.area_usuario_m2 || 0,
+                tipo_inmueble: rawAppraisalContent.initial_data?.tipo_inmueble || 'N/A',
+                estrato: rawAppraisalContent.initial_data?.estrato || 'N/A',
               },
               appraisal_data: {
                 analisis_mercado: rawAppraisalContent.analisis_mercado || { rango_arriendo_referencias_cop: { min: 0, max: 0 }, observacion_mercado: 'N/A' },
@@ -197,19 +197,10 @@ export default function History() {
     }
 
     try {
-      // Pass the full AppraisalResult object, which ParsedAppraisal extends
-      const pdfBlob = await appraisalApiService.downloadPdf(appraisal, session.access_token);
-      const url = window.URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `peritaje-${appraisal.request_id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      await appraisalApiService.downloadPdf(appraisal.id, session.access_token);
       toast({
-        title: "Descarga exitosa",
-        description: "El PDF se ha descargado correctamente.",
+        title: "Descarga iniciada",
+        description: "El PDF debería comenzar a descargarse en breve.",
       });
     } catch (err: any) {
       console.error("Error downloading PDF from backend:", err);

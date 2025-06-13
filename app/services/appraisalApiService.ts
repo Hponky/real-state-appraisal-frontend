@@ -1,11 +1,21 @@
-import { AppraisalFormData, AppraisalResult } from '../appraisal/types/appraisal-results';
+import { AppraisalFormData, AppraisalResult, MaterialQualityEntry } from '../appraisal/types/appraisal-results';
+
+// Define the payload structure for the submission to n8n
+export interface AppraisalSubmissionPayload extends Partial<Omit<AppraisalFormData, 'images'>> {
+  requestId: string;
+  department: string; // Add department back to root
+  city: string;       // Add city back to root
+  address: string;    // Add address back to root
+  imagesBase64: string[];
+  materialQualityEntries: MaterialQualityEntry[];
+}
 
 export const appraisalApiService = {
-    submitAppraisal: async (requestId: string, formData: AppraisalFormData): Promise<void> => { // Aceptar requestId, formData y accessToken
+    submitAppraisal: async (requestId: string, payload: AppraisalSubmissionPayload): Promise<void> => {
         try {
             const requestBody = {
                 requestId: requestId,
-                formData: formData,
+                formData: payload, // Now sending the constructed payload
             };
 
             const n8nWebhookUrl = '/api/n8n/recepcion-datos-inmueble'; // Usar la ruta local proxied y especificar el nombre del webhook
@@ -65,24 +75,38 @@ export const appraisalApiService = {
      }
    },
 
-   downloadPdf: async (appraisalData: AppraisalResult, accessToken: string): Promise<Blob> => {
+   downloadPdf: async (appraisalId: string, accessToken: string): Promise<void> => {
      try {
-       const response = await fetch('/api/appraisal/download-pdf', {
-         method: 'POST',
+       const response = await fetch(`/api/appraisal/download-pdf?appraisalId=${appraisalId}`, {
+         method: 'GET',
          headers: {
-           'Content-Type': 'application/json',
            'Authorization': `Bearer ${accessToken}`,
          },
-         body: JSON.stringify(appraisalData),
        });
 
        if (!response.ok) {
-         const errorData = await response.json();
-         throw new Error(errorData.message || 'Error al descargar el PDF.');
+         const errorBody = await response.text();
+         let errorData: string;
+         try {
+           const jsonError = JSON.parse(errorBody);
+           errorData = jsonError.message || JSON.stringify(jsonError);
+         } catch (parseError) {
+           errorData = errorBody || 'Error desconocido al descargar el PDF.';
+         }
+         throw new Error(`Error ${response.status}: ${errorData}`);
        }
 
-       return response.blob();
+       const blob = await response.blob();
+       const url = window.URL.createObjectURL(blob);
+       const a = document.createElement('a');
+       a.href = url;
+       a.download = `peritaje-${appraisalId}.pdf`;
+       document.body.appendChild(a);
+       a.click();
+       a.remove();
+       window.URL.revokeObjectURL(url);
      } catch (error) {
+       console.error("Error al descargar el PDF:", error);
        throw error;
      }
    },

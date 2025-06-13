@@ -1,12 +1,42 @@
 import fetchMock from 'jest-fetch-mock';
-import { appraisalApiService } from '../appraisalApiService';
-import { AppraisalFormData, AppraisalResult } from '../../appraisal/types/appraisal-results';
+import { appraisalApiService, AppraisalSubmissionPayload } from '../appraisalApiService';
+import { AppraisalFormData, AppraisalResult, MaterialQualityEntry } from '../../appraisal/types/appraisal-results';
 
 fetchMock.enableMocks();
 
 describe('appraisalApiService', () => {
+  let mockCreateObjectURL: jest.SpyInstance;
+  let mockRevokeObjectURL: jest.SpyInstance;
+  let mockAppendChild: jest.SpyInstance;
+  let mockRemoveChild: jest.SpyInstance;
+
   beforeEach(() => {
     fetchMock.resetMocks();
+
+    // Ensure window.URL and its methods exist before spying
+    if (!window.URL) {
+      (window as any).URL = {};
+    }
+    if (!window.URL.createObjectURL) {
+      (window.URL as any).createObjectURL = jest.fn();
+    }
+    if (!window.URL.revokeObjectURL) {
+      (window.URL as any).revokeObjectURL = jest.fn();
+    }
+
+    mockCreateObjectURL = jest.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+    mockRevokeObjectURL = jest.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    // Mock document.body.appendChild and .remove
+    mockAppendChild = jest.spyOn(document.body, 'appendChild').mockImplementation((node) => node);
+    mockRemoveChild = jest.spyOn(HTMLElement.prototype, 'remove').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    mockCreateObjectURL.mockRestore();
+    mockRevokeObjectURL.mockRestore();
+    mockAppendChild.mockRestore();
+    mockRemoveChild.mockRestore();
   });
 
   const mockAppraisalFormData: AppraisalFormData = {
@@ -96,22 +126,32 @@ describe('appraisalApiService', () => {
     cumpleNormasSismoresistencia: true,
     riesgosEvidentesHabitabilidad: true,
     riesgosEvidentesHabitabilidadDescription: "Humedad en el sótano debido a filtraciones menores.",
-    seguros_obligatorios_recomendables: true,
+    seguros_obligatorios_recomendables: "true",
     cuentaPolizaSeguroVigente: true,
     admin_fee: 200000,
     imagesBase64: ["data:image/jpeg;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/.....QC0oNFFMBaKKKkBM0tFFACZpKKKACiiikhsWnCiimIWkNFFACZ5ppNFFJjR//Z"],
     materialQualityEntries: []
   };
 
-  const mockN8nWebhookRequestBody = {
-    requestId: "test-request-123",
-    formData: mockAppraisalFormData,
+  // Create a mock payload that matches AppraisalSubmissionPayload
+  const mockAppraisalSubmissionPayload: AppraisalSubmissionPayload = {
+    requestId: mockAppraisalFormData.requestId!,
+    department: mockAppraisalFormData.department,
+    city: mockAppraisalFormData.city,
+    address: mockAppraisalFormData.address,
+    // Omit the fields that are now part of imagesBase64, requestId, department, city, or address
+    ...(() => {
+      const { imagesBase64, requestId, department, city, address, ...rest } = mockAppraisalFormData;
+      return rest;
+    })(),
+    imagesBase64: mockAppraisalFormData.imagesBase64 || [],
+    materialQualityEntries: mockAppraisalFormData.materialQualityEntries || [],
   };
 
-  test('submitAppraisal should send requestId and formData and return successfully on 200', async () => {
+  test('submitAppraisal should send requestId and payload and return successfully on 200', async () => {
     fetchMock.mockResponseOnce(JSON.stringify({ message: 'Appraisal submitted successfully' }), { status: 200 });
 
-    await expect(appraisalApiService.submitAppraisal(mockN8nWebhookRequestBody.requestId, mockN8nWebhookRequestBody.formData)).resolves.toBeUndefined();
+    await expect(appraisalApiService.submitAppraisal(mockAppraisalSubmissionPayload.requestId, mockAppraisalSubmissionPayload)).resolves.toBeUndefined();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
@@ -121,7 +161,10 @@ describe('appraisalApiService', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(mockN8nWebhookRequestBody),
+        body: JSON.stringify({
+          requestId: mockAppraisalSubmissionPayload.requestId,
+          formData: mockAppraisalSubmissionPayload,
+        }),
       }
     );
   });
@@ -130,7 +173,7 @@ describe('appraisalApiService', () => {
     const errorResponse = { message: 'Submission failed' };
     fetchMock.mockResponseOnce(JSON.stringify(errorResponse), { status: 400 });
 
-    await expect(appraisalApiService.submitAppraisal(mockN8nWebhookRequestBody.requestId, mockN8nWebhookRequestBody.formData)).rejects.toThrow(
+    await expect(appraisalApiService.submitAppraisal(mockAppraisalSubmissionPayload.requestId, mockAppraisalSubmissionPayload)).rejects.toThrow(
       `Error 400: ${JSON.stringify(errorResponse)}`
     );
 
@@ -142,7 +185,10 @@ describe('appraisalApiService', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(mockN8nWebhookRequestBody),
+        body: JSON.stringify({
+          requestId: mockAppraisalSubmissionPayload.requestId,
+          formData: mockAppraisalSubmissionPayload,
+        }),
       }
     );
   });
@@ -151,7 +197,7 @@ describe('appraisalApiService', () => {
     const networkError = new Error('Network request failed');
     fetchMock.mockRejectOnce(networkError);
 
-    await expect(appraisalApiService.submitAppraisal(mockN8nWebhookRequestBody.requestId, mockN8nWebhookRequestBody.formData)).rejects.toThrow(
+    await expect(appraisalApiService.submitAppraisal(mockAppraisalSubmissionPayload.requestId, mockAppraisalSubmissionPayload)).rejects.toThrow(
       networkError.message
     );
 
@@ -163,7 +209,10 @@ describe('appraisalApiService', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(mockN8nWebhookRequestBody),
+        body: JSON.stringify({
+          requestId: mockAppraisalSubmissionPayload.requestId,
+          formData: mockAppraisalSubmissionPayload,
+        }),
       }
     );
   });
@@ -215,8 +264,6 @@ describe('appraisalApiService', () => {
   };
 
   test('downloadPdf should download PDF successfully', async () => {
-    fetchMock.disableMocks(); // Temporarily disable fetchMock for this test
-
     const mockPdfBlob = new Blob(['mock pdf content'], { type: 'application/pdf' });
 
     jest.spyOn(global, 'fetch').mockImplementationOnce(() =>
@@ -230,61 +277,57 @@ describe('appraisalApiService', () => {
       } as Response)
     );
 
+    const mockAppraisalId = 'mock-appraisal-id-123';
     const accessToken = 'mock-access-token';
-    const result = await appraisalApiService.downloadPdf(mockAppraisalResult, accessToken);
+    await appraisalApiService.downloadPdf(mockAppraisalId, accessToken);
 
-    expect(result).toEqual(mockPdfBlob);
+    expect(mockCreateObjectURL).toHaveBeenCalledTimes(1);
+    expect(mockCreateObjectURL).toHaveBeenCalledWith(mockPdfBlob);
+    expect(mockAppendChild).toHaveBeenCalledTimes(1);
+    expect(mockRemoveChild).toHaveBeenCalledTimes(1);
+    expect(mockRevokeObjectURL).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/appraisal/download-pdf',
+      `/api/appraisal/download-pdf?appraisalId=${mockAppraisalId}`,
       {
-        method: 'POST',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(mockAppraisalResult),
       }
     );
-    fetchMock.enableMocks(); // Re-enable fetchMock after this test
   });
 
   test('downloadPdf should throw an error on non-200 response', async () => {
-    fetchMock.disableMocks(); // Temporarily disable fetchMock for this test
-
     const errorResponse = { message: 'PDF download failed' };
 
     jest.spyOn(global, 'fetch').mockImplementationOnce(() =>
       Promise.resolve({
         ok: false,
         status: 400,
-        json: () => Promise.resolve(errorResponse), // Mock json() method
-        text: () => Promise.resolve(JSON.stringify(errorResponse)), // Mock text() method
+        json: () => Promise.resolve(errorResponse),
+        text: () => Promise.resolve(JSON.stringify(errorResponse)),
       } as Response)
     );
 
+    const mockAppraisalId = 'mock-appraisal-id-123';
     const accessToken = 'mock-access-token';
-    await expect(appraisalApiService.downloadPdf(mockAppraisalResult, accessToken)).rejects.toThrow(
+    await expect(appraisalApiService.downloadPdf(mockAppraisalId, accessToken)).rejects.toThrow(
       errorResponse.message
     );
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/appraisal/download-pdf',
+      `/api/appraisal/download-pdf?appraisalId=${mockAppraisalId}`,
       {
-        method: 'POST',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(mockAppraisalResult),
       }
     );
-    fetchMock.enableMocks(); // Re-enable fetchMock after this test
   });
 
   test('saveAppraisalResult should save appraisal successfully', async () => {
-    fetchMock.disableMocks(); // Temporarily disable fetchMock for this test
-
     jest.spyOn(global, 'fetch').mockImplementationOnce(() =>
       Promise.resolve({
         ok: true,
@@ -296,7 +339,7 @@ describe('appraisalApiService', () => {
 
     const userId = 'mock-user-id';
     const accessToken = 'mock-access-token';
-    await expect(appraisalApiService.saveAppraisalResult(mockN8nWebhookRequestBody.formData, userId, accessToken)).resolves.toBeUndefined();
+    await expect(appraisalApiService.saveAppraisalResult(mockAppraisalFormData, userId, accessToken)).resolves.toBeUndefined();
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
@@ -307,15 +350,12 @@ describe('appraisalApiService', () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ appraisalData: mockN8nWebhookRequestBody.formData, userId: userId }),
+        body: JSON.stringify({ appraisalData: mockAppraisalFormData, userId: userId }),
       }
     );
-    fetchMock.enableMocks(); // Re-enable fetchMock after this test
   });
 
   test('saveAppraisalResult should throw an error on non-200 response', async () => {
-    fetchMock.disableMocks(); // Temporarily disable fetchMock for this test
-
     const errorResponse = { message: 'Save failed' };
 
     jest.spyOn(global, 'fetch').mockImplementationOnce(() =>
@@ -329,7 +369,7 @@ describe('appraisalApiService', () => {
 
     const userId = 'mock-user-id';
     const accessToken = 'mock-access-token';
-    await expect(appraisalApiService.saveAppraisalResult(mockN8nWebhookRequestBody.formData, userId, accessToken)).rejects.toThrow(
+    await expect(appraisalApiService.saveAppraisalResult(mockAppraisalFormData, userId, accessToken)).rejects.toThrow(
       errorResponse.message
     );
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -341,9 +381,8 @@ describe('appraisalApiService', () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ appraisalData: mockN8nWebhookRequestBody.formData, userId: userId }),
+        body: JSON.stringify({ appraisalData: mockAppraisalFormData, userId: userId }),
       }
     );
-    fetchMock.enableMocks(); // Re-enable fetchMock after this test
   });
 });

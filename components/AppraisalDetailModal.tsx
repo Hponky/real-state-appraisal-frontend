@@ -165,8 +165,11 @@ const AppraisalDetailModal: React.FC<AppraisalDetailModalProps> = ({ isOpen, onC
         <DialogHeader className="pb-4 border-b">
           <DialogTitle className="text-2xl font-bold text-gray-800">Detalles del Peritaje</DialogTitle>
           <DialogDescription className="text-gray-600">
-            Información completa del peritaje con ID: <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{appraisal.informacion_basica?.requestId || appraisal.id}</span>
+            Información completa del peritaje con ID: <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{appraisal.request_id || appraisal.id}</span>
           </DialogDescription>
+          <p className="text-sm text-gray-600 mt-2">
+            Dirección: <span className="font-medium">{appraisal?.initial_data?.address ?? 'Dirección no disponible'}</span>
+          </p>
         </DialogHeader>
         <div className="py-4 space-y-6">
           <p className="text-sm text-gray-500">
@@ -174,20 +177,20 @@ const AppraisalDetailModal: React.FC<AppraisalDetailModalProps> = ({ isOpen, onC
           </p>
 
           <Accordion type="multiple" className="w-full">
-            {renderSection("Información Básica", appraisal.informacion_basica, "basic-info")}
-            {renderSection("Análisis de Mercado", appraisal.analisis_mercado, "market-analysis")}
-            {renderSection("Valoración de Arriendo Actual", appraisal.valoracion_arriendo_actual, "current-rent-valuation")}
-            {renderSection("Potencial de Valorización con Mejoras", appraisal.potencial_valorizacion_con_mejoras_explicado, "improvement-potential")}
-            {renderSection("Análisis Cualitativo de Arriendo", appraisal.analisis_cualitativo_arriendo, "qualitative-rent-analysis")}
-            {renderSection("Análisis Legal de Arrendamiento", appraisal.analisis_legal_arrendamiento, "legal-analysis")}
-            {appraisal.recomendaciones_proximos_pasos && appraisal.recomendaciones_proximos_pasos.length > 0 && (
+            {renderSection("Información Básica", appraisal.initial_data ?? {}, "basic-info")}
+            {renderSection("Análisis de Mercado", appraisal.appraisal_data?.analisis_mercado ?? {}, "market-analysis")}
+            {renderSection("Valoración de Arriendo Actual", appraisal.appraisal_data?.valoracion_arriendo_actual ?? {}, "current-rent-valuation")}
+            {renderSection("Potencial de Valorización con Mejoras", appraisal.appraisal_data?.potencial_valorizacion_con_mejoras_explicado ?? {}, "improvement-potential")}
+            {renderSection("Análisis Cualitativo de Arriendo", (appraisal as any).analisis_cualitativo_arriendo ?? {}, "qualitative-rent-analysis")}
+            {renderSection("Análisis Legal de Arrendamiento", appraisal.appraisal_data?.analisis_legal_arrendamiento ?? {}, "legal-analysis")}
+            {(appraisal.appraisal_data?.analisis_legal_arrendamiento?.consideraciones_contractuales_sugeridas ?? []).length > 0 && (
               <AccordionItem value="next-steps-recommendations">
                 <AccordionTrigger className="text-lg font-semibold">Recomendaciones y Próximos Pasos</AccordionTrigger>
                 <AccordionContent>
                   <Card className="mt-2">
                     <CardContent className="pt-4">
                       <ul className="list-disc list-inside ml-4">
-                        {appraisal.recomendaciones_proximos_pasos.map((item, index) => (
+                        {(appraisal.appraisal_data?.analisis_legal_arrendamiento?.consideraciones_contractuales_sugeridas ?? []).map((item, index) => (
                           <li key={index} className="whitespace-pre-wrap">{item}</li>
                         ))}
                       </ul>

@@ -124,7 +124,7 @@ export async function POST(request: Request) {
     // Construir el objeto initial_data con los campos requeridos
     const initialData = {
       ciudad: informacion_basica?.ciudad || 'N/A',
-      address: informacion_basica?.address || 'N/A',
+      address: informacion_basica?.address || consolidatedAppraisalData.formData?.address,
       area_usuario_m2: informacion_basica?.area_usuario_m2 || 0,
       tipo_inmueble: informacion_basica?.tipo_inmueble || 'N/A',
       estrato: informacion_basica?.estrato || 'N/A',

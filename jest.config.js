@@ -21,8 +21,7 @@ const customJestConfig = {
   ],
   // Use ts-jest for TypeScript transformations
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest',
-    '^.+\\.(js|jsx)$': ['@swc/jest'], // Keep SWC for JS/JSX if needed, or configure ts-jest for them too
+    '^.+\\.(t|j)sx?$': ['@swc/jest'], // Transform all .ts, .tsx, .js, .jsx files with SWC
   },
 };
 

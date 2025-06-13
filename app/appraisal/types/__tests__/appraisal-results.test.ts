@@ -155,7 +155,7 @@ describe('AppraisalFormData Interface', () => {
       cumpleNormasSismoresistencia: true,
       riesgosEvidentesHabitabilidad: false,
       riesgosEvidentesHabitabilidadDescription: "",
-      seguros_obligatorios_recomendables: true,
+      seguros_obligatorios_recomendables: "true",
       cuentaPolizaSeguroVigente: true,
       admin_fee: 150000,
       imagesBase64: [],

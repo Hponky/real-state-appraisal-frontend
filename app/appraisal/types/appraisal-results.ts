@@ -1,17 +1,17 @@
 export interface PotRestriction {
   selected: boolean;
-  description: string;
+  description?: string; // Make description optional
 }
 
 export interface ZonaDeclaratoriaEspecial {
   aplica: boolean;
-  tipo: string;
-  restricciones_comunes: string[];
-  restricciones_comunes_descripcion: string;
+  tipo?: string; // Make tipo optional
+  restricciones_comunes?: string[]; // Make restricciones_comunes optional
+  restricciones_comunes_descripcion?: string; // Also make this optional based on schema
   otras_restricciones_seleccion: string;
-  otras_restricciones_descripcion: string;
-  fuente: string;
-  declaratoriaImponeObligaciones: boolean;
+  otras_restricciones_descripcion?: string; // Also make this optional based on schema
+  fuente?: string; // Also make this optional based on schema
+  declaratoriaImponeObligaciones?: boolean; // Also make this optional based on schema
 }
 
 export interface LegalDeclarations {
@@ -100,7 +100,7 @@ export interface AppraisalFormData {
   cumpleNormasSismoresistencia: boolean;
   riesgosEvidentesHabitabilidad: boolean;
   riesgosEvidentesHabitabilidadDescription: string;
-  seguros_obligatorios_recomendables: boolean;
+  seguros_obligatorios_recomendables?: string; // Changed from boolean to string and made optional
   cuentaPolizaSeguroVigente: boolean;
   admin_fee: number;
   imagesBase64: string[];

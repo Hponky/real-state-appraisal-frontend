@@ -1,8 +1,8 @@
 import { useCallback, useState, Dispatch, SetStateAction, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppraisalFormData } from "./appraisalFormSchema";
-import { MaterialQualityEntry } from "./useMaterialQualityEntries";
-import { appraisalApiService } from "../../services/appraisalApiService";
+import { MaterialQualityEntry } from "../types/appraisal-results";
+import { appraisalApiService, AppraisalSubmissionPayload } from "../../services/appraisalApiService";
 import { v4 as uuidv4 } from 'uuid';
 import { User, RealtimePostgresChangesPayload } from '@supabase/supabase-js'; // Importar tipos necesarios de supabase-js
 import { useAuth } from '@/hooks/useAuth'; // Importar el hook useAuth
@@ -111,17 +111,21 @@ export function useAppraisalSubmission({
                 })
             );
 
-const dataForN8n = {
+const dataForN8n: AppraisalSubmissionPayload = {
     requestId: newRequestId,
+    department: formData.department,
+    city: formData.city,
+    address: formData.address,
     ...(() => {
-        const { images, ...rest } = formData;
+        // Exclude images, department, city, and address from the spread 'rest'
+        const { images, department, city, address, ...rest } = formData;
         return rest;
     })(),
     imagesBase64: base64Images,
     materialQualityEntries: materialQualityEntries.filter(
-        entry => entry.location.trim() !== '' || entry.qualityDescription.trim() !== ''
+        entry => entry.material?.trim() !== '' || entry.quality?.trim() !== '' || entry.description?.trim() !== ''
     ),
-            };
+};
 
             // 2. Llamar a appraisalApiService para activar n8n
             if (!session?.access_token) {
