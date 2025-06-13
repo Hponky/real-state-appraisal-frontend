@@ -37,7 +37,7 @@ export interface MaterialQualityEntry {
   description: string;
 }
 
-export interface FormDataAppraisalResult {
+export interface AppraisalFormData {
   requestId: string;
   department: string;
   city: string;
@@ -166,10 +166,10 @@ export interface AnalisisLegalArrendamiento {
 }
 
 export interface InitialData {
-  city: string;
+  ciudad: string;
   address: string;
-  built_area: number;
-  property_type: string;
+  area_usuario_m2: number;
+  tipo_inmueble: string;
   estrato: string;
 }
 

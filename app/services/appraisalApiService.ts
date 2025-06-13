@@ -1,7 +1,7 @@
-import { FormDataAppraisalResult } from '../appraisal/types/appraisal-results';
+import { AppraisalFormData, AppraisalResult } from '../appraisal/types/appraisal-results';
 
 export const appraisalApiService = {
-    submitAppraisal: async (requestId: string, formData: FormDataAppraisalResult): Promise<void> => { // Aceptar requestId, formData y accessToken
+    submitAppraisal: async (requestId: string, formData: AppraisalFormData): Promise<void> => { // Aceptar requestId, formData y accessToken
         try {
             const requestBody = {
                 requestId: requestId,
@@ -65,7 +65,7 @@ export const appraisalApiService = {
      }
    },
 
-   downloadPdf: async (appraisalData: FormDataAppraisalResult, accessToken: string): Promise<Blob> => {
+   downloadPdf: async (appraisalData: AppraisalResult, accessToken: string): Promise<Blob> => {
      try {
        const response = await fetch('/api/appraisal/download-pdf', {
          method: 'POST',
@@ -87,7 +87,7 @@ export const appraisalApiService = {
      }
    },
 
-   saveAppraisalResult: async (appraisalData: FormDataAppraisalResult, userId: string | null, accessToken: string): Promise<void> => {
+   saveAppraisalResult: async (appraisalData: AppraisalFormData, userId: string | null, accessToken: string): Promise<void> => {
      try {
        const requestBody = {
          appraisalData: appraisalData,

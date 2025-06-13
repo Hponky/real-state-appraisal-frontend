@@ -1,6 +1,6 @@
 import fetchMock from 'jest-fetch-mock';
 import { appraisalApiService } from '../appraisalApiService';
-import { FormDataAppraisalResult } from '../../appraisal/types/appraisal-results';
+import { AppraisalFormData, AppraisalResult } from '../../appraisal/types/appraisal-results';
 
 fetchMock.enableMocks();
 
@@ -9,7 +9,7 @@ describe('appraisalApiService', () => {
     fetchMock.resetMocks();
   });
 
-  const mockFormDataAppraisalResult: FormDataAppraisalResult = {
+  const mockAppraisalFormData: AppraisalFormData = {
     requestId: "test-request-123",
     department: "Caldas",
     city: "Manizales",
@@ -105,7 +105,7 @@ describe('appraisalApiService', () => {
 
   const mockN8nWebhookRequestBody = {
     requestId: "test-request-123",
-    formData: mockFormDataAppraisalResult,
+    formData: mockAppraisalFormData,
   };
 
   test('submitAppraisal should send requestId and formData and return successfully on 200', async () => {
@@ -168,6 +168,52 @@ describe('appraisalApiService', () => {
     );
   });
 
+  const mockAppraisalResult: AppraisalResult = {
+    request_id: "test-request-123",
+    initial_data: {
+      ciudad: "Manizales",
+      address: "Calle 123 #45-67",
+      area_usuario_m2: 80,
+      tipo_inmueble: "Casa",
+      estrato: "4",
+    },
+    appraisal_data: {
+      analisis_mercado: {
+        rango_arriendo_referencias_cop: { min: 1000000, max: 1500000 },
+        observacion_mercado: "Mercado estable con demanda creciente.",
+      },
+      valoracion_arriendo_actual: {
+        estimacion_canon_mensual_cop: 1200000,
+        justificacion_estimacion_actual: "Basado en comparables y características del inmueble.",
+      },
+      potencial_valorizacion_con_mejoras_explicado: {
+        mejoras_con_impacto_detallado: [],
+        canon_potencial_total_estimado_cop: 1800000,
+        comentario_estrategia_valorizacion: "Potencial significativo con mejoras en cocina y baños.",
+      },
+      analisis_legal_arrendamiento: {
+        requestId: "test-request-123",
+        tipo_uso_principal_analizado: "Residencial",
+        viabilidad_general_preliminar: "Viable",
+        puntos_criticos_y_riesgos: [],
+        documentacion_clave_a_revisar_o_completar: [],
+        consideraciones_contractuales_sugeridas: ["Cláusula de mantenimiento", "Duración del contrato"],
+        resumen_ejecutivo_legal: "Análisis legal favorable.",
+      },
+      gemini_usage_metadata: {
+        economico: {
+          promptTokenCount: 100,
+          candidatesTokenCount: 50,
+          totalTokenCount: 150,
+          promptTokensDetails: [],
+          thoughtsTokenCount: 20,
+        },
+      },
+    },
+    user_id: "mock-user-id",
+    created_at: "2023-01-01T10:00:00Z",
+  };
+
   test('downloadPdf should download PDF successfully', async () => {
     fetchMock.disableMocks(); // Temporarily disable fetchMock for this test
 
@@ -185,7 +231,7 @@ describe('appraisalApiService', () => {
     );
 
     const accessToken = 'mock-access-token';
-    const result = await appraisalApiService.downloadPdf(mockN8nWebhookRequestBody.formData, accessToken);
+    const result = await appraisalApiService.downloadPdf(mockAppraisalResult, accessToken);
 
     expect(result).toEqual(mockPdfBlob);
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -197,7 +243,7 @@ describe('appraisalApiService', () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(mockN8nWebhookRequestBody.formData),
+        body: JSON.stringify(mockAppraisalResult),
       }
     );
     fetchMock.enableMocks(); // Re-enable fetchMock after this test
@@ -218,7 +264,7 @@ describe('appraisalApiService', () => {
     );
 
     const accessToken = 'mock-access-token';
-    await expect(appraisalApiService.downloadPdf(mockN8nWebhookRequestBody.formData, accessToken)).rejects.toThrow(
+    await expect(appraisalApiService.downloadPdf(mockAppraisalResult, accessToken)).rejects.toThrow(
       errorResponse.message
     );
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -230,7 +276,7 @@ describe('appraisalApiService', () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(mockN8nWebhookRequestBody.formData),
+        body: JSON.stringify(mockAppraisalResult),
       }
     );
     fetchMock.enableMocks(); // Re-enable fetchMock after this test

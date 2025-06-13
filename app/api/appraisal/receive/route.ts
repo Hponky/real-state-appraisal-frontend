@@ -118,9 +118,20 @@ export async function POST(request: Request) {
       potencial_valorizacion_arriendo, // Nombre de campo corregido
       analisis_legal_arrendamiento,
       metadata_llamadas_ia, // Nombre de campo corregido
+      informacion_basica, // Añadir informacion_basica para extraer datos iniciales
     } = consolidatedAppraisalData;
 
+    // Construir el objeto initial_data con los campos requeridos
+    const initialData = {
+      ciudad: informacion_basica?.ciudad || 'N/A',
+      address: informacion_basica?.address || 'N/A',
+      area_usuario_m2: informacion_basica?.area_usuario_m2 || 0,
+      tipo_inmueble: informacion_basica?.tipo_inmueble || 'N/A',
+      estrato: informacion_basica?.estrato || 'N/A',
+    };
+
     const appraisalResultData = {
+      initial_data: initialData, // Incluir initial_data aquí
       analisis_mercado: analisis_mercado_arriendo, // Mapear al nombre esperado en la BD
       valoracion_arriendo_actual,
       potencial_valorizacion_con_mejoras_explicado: potencial_valorizacion_arriendo, // Mapear al nombre esperado en la BD
