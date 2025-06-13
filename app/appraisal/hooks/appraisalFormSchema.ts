@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 // Esquema para las entradas de Calidad de Materiales
 export const MaterialQualityEntrySchema = z.object({
-  material: z.string().min(1, "El material es requerido."),
-  quality: z.string().min(1, "La calidad es requerida."),
+  material: z.string().optional(),
+  quality: z.string().optional(),
   description: z.string().optional(),
 });
 

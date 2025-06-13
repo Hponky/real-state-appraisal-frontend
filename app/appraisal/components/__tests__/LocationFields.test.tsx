@@ -2,21 +2,81 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { LocationFields } from '../LocationFields';
 import { AppraisalFormData } from '../../hooks/appraisalFormSchema';
 import '@testing-library/jest-dom';
+import { useFormContext } from 'react-hook-form';
 
-// Mock the shadcn/ui select component as it requires specific DOM structure and context
-// This is a simplified mock, adjust if more complex interactions are needed
-jest.mock('@/components/ui/select', () => ({
-  Select: ({ value, onValueChange, disabled, children }: any) => (
-    <select data-testid="select" value={value} onChange={(e) => onValueChange(e.target.value)} disabled={disabled}>
-      {children}
-    </select>
-  ),
-  SelectTrigger: ({ children, ...props }: any) => <option {...props}>{children}</option>,
-  SelectValue: ({ placeholder }: any) => <option value="">{placeholder}</option>,
-  SelectContent: ({ children }: any) => <>{children}</>,
-  SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
+// Mock the shadcn/ui select component to behave like a native select for testing purposes.
+jest.mock('@/components/ui/select', () => {
+  const React = require('react');
+
+  // Helper to get display name for mocked components
+  const getDisplayName = (Component: any) => {
+    return Component.displayName || Component.name || null;
+  };
+
+  return {
+    Select: ({ value, onValueChange, disabled, children }: any) => {
+      const childrenArray = React.Children.toArray(children);
+
+      const selectTrigger = childrenArray.find(
+        (child: any) => React.isValidElement(child) && getDisplayName(child.type) === 'SelectTrigger'
+      );
+      const selectContent = childrenArray.find(
+        (child: any) => React.isValidElement(child) && getDisplayName(child.type) === 'SelectContent'
+      );
+
+      const selectValuePlaceholder = selectTrigger
+        ? React.Children.toArray(selectTrigger.props.children).find(
+            (child: any) => React.isValidElement(child) && getDisplayName(child.type) === 'SelectValue'
+          )?.props.placeholder
+        : '';
+
+      const options = selectContent
+        ? React.Children.toArray(selectContent.props.children).map((item: any) => {
+            if (React.isValidElement(item) && getDisplayName(item.type) === 'SelectItem') {
+              return (
+                <option key={item.props.value} value={item.props.value}>
+                  {item.props.children}
+                </option>
+              );
+            }
+            return null;
+          })
+        : [];
+
+      return (
+        <select
+          data-testid="mock-select" // Add a test ID for the native select
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          disabled={disabled}
+          // Associate with label if present, assuming LocationFields passes aria-label or id
+          aria-label={selectTrigger?.props['aria-label'] || ''}
+        >
+          {selectValuePlaceholder && <option value="" disabled>{selectValuePlaceholder}</option>}
+          {options}
+        </select>
+      );
+    },
+    SelectTrigger: ({ children, ...props }: any) => {
+      const Trigger = (p: any) => <button {...p}>{children}</button>;
+      Trigger.displayName = 'SelectTrigger';
+      return <Trigger {...props} />;
+    },
+    SelectValue: ({ placeholder }: any) => {
+      return <span data-testid="select-value">{placeholder}</span>;
+    },
+    SelectItem: ({ value, children }: any) => {
+      return <div data-testid={`select-item-${value}`} data-value={value}>{children}</div>;
+    },
+  };
+});
+
+
+// Mock useFormContext
+jest.mock('react-hook-form', () => ({
+  ...jest.requireActual('react-hook-form'),
+  useFormContext: jest.fn(),
 }));
-
 
 describe('LocationFields', () => {
   const mockSetFormData = jest.fn();
@@ -24,17 +84,73 @@ describe('LocationFields', () => {
     department: '',
     city: '',
     address: '',
-    area: null,
-    stratum: '',
-    adminFee: null,
+    documento_ficha_predial_catastral: false,
+    property_type: '',
+    estrato: '',
+    built_area: undefined,
+    pot_restriccion_uso_suelo: { selected: false },
+    pot_restriccion_edificabilidad: { selected: false },
+    pot_restriccion_altura: { selected: false },
+    pot_afectacion_via_publica: { selected: false },
+    pot_afectacion_ronda_hidrica: { selected: false },
+    pot_afectacion_infraestructura_servicios_publicos: { selected: false },
+    pot_otra_restriccion_pot: { selected: false },
+    zona_declaratoria_especial: { aplica: false, otras_restricciones_seleccion: 'No aplica' },
+    contrato_escrito_vigente: '',
+    preferencia_requisito_futuro_contrato: '',
+    responsable_servicios_publicos: '',
+    gravamenes_cargas_seleccionados: [],
+    litigios_proceso_judicial_seleccionados: [],
+    impuestoPredialAlDia: false,
+    acceso_servicios_publicos: '',
+    serviciosConectadosFuncionando: false,
+    deudasServiciosPublicos: false,
+    condiciones_seguridad_salubridad: '',
+    cumpleNormasSismoresistencia: false,
+    riesgosEvidentesHabitabilidad: false,
+    seguros_obligatorios_recomendables: '',
+    cuentaPolizaSeguroVigente: false,
+    documento_certificado_tradicion_libertad: false,
+    documento_escritura_publica: false,
+    documento_recibo_impuesto_predial: false,
+    documento_paz_salvo_administracion: false,
+    documento_reglamento_ph: false,
+    legal_declarations: {
+      declaracion_veracidad: false,
+      entendimiento_alcance_analisis: false,
+      declaracion_propiedad_exclusiva: false,
+      declaracion_uso_previsto: false,
+      declaracion_cumplimiento_normas: false,
+      declaracion_sin_litigios: false,
+      declaracion_servidumbres: false,
+      declaracion_sin_afectaciones: false,
+      declaracion_impuestos_pagados: false,
+      declaracion_sin_deudas_asociacion: false,
+      declaracion_informacion_completa: false,
+      informacionVerazCompleta: false,
+      entendimientoAnalisisLegal: false,
+      autorizacionTratamientoDatos: false,
+    },
     expectedValue: 0,
-    propertyType: '',
-    materialQualityEntries: [],
+    images: [],
+    admin_fee: undefined,
+    ph_aplica: false,
+    ph_sometido_ley_675: false,
+    ph_reglamento_interno: false,
+    ph_reglamento_cubre_aspectos: false,
+    ph_escritura_registrada: false,
+    reglamentoPropiedadHorizontalInscrito: false,
+    deudasCuotasAdministracion: false,
+    ph_tipo_propiedad: undefined,
+    ph_nombre_conjunto: '',
+    ph_nit_copropiedad: '',
+    ph_restriccion_arrendamiento: '',
+    ph_cuotas_pendientes: '',
+    ph_normativa_interna: '',
   };
   const defaultProps = {
     formData: defaultFormData,
     setFormData: mockSetFormData,
-    errors: {},
     departments: ['Dept A', 'Dept B'],
     cities: ['City X', 'City Y'],
     isLoadingPlaces: false,
@@ -155,12 +271,71 @@ describe('LocationFields', () => {
   });
 
   test('displays error messages', () => {
-    const errors = {
-      department: 'Department is required',
-      city: 'City is required',
-      address: 'Address is required',
+    const mockErrors = {
+      department: { type: 'required', message: 'Department is required' },
+      city: { type: 'required', message: 'City is required' },
+      address: { type: 'required', message: 'Address is required' },
     };
-    render(<LocationFields {...defaultProps} errors={errors} />);
+
+    (useFormContext as jest.Mock).mockReturnValue({
+      control: {
+        _fields: {},
+        _names: {
+          mount: new Set(),
+          unMount: new Set(),
+          array: new Set(),
+          watch: new Set(),
+          focus: new Set(),
+        },
+        _formValues: {},
+        _defaultValues: {},
+        _formState: {
+          isDirty: false,
+          isValidating: false,
+          dirtyFields: {},
+          isSubmitted: false,
+          isSubmitSuccessful: false,
+          submitCount: 0,
+          touchedFields: {},
+          isSubmitting: false,
+          isValid: false,
+          errors: mockErrors, // Inject errors here
+        },
+        _proxyFormState: {
+          isDirty: false,
+          isValidating: false,
+          dirtyFields: false,
+          isSubmitted: false,
+          isSubmitSuccessful: false,
+          submitCount: false,
+          touchedFields: false,
+          isSubmitting: false,
+          isValid: false,
+          errors: true,
+        },
+        _subjects: {
+          watch: {
+            next: jest.fn(),
+          },
+          array: {
+            next: jest.fn(),
+          },
+          state: {
+            next: jest.fn(),
+          },
+        },
+        _get: jest.fn(),
+        _set: jest.fn(),
+        _updateFormState: jest.fn(),
+        _updateFieldArray: jest.fn(),
+        _getFieldArray: jest.fn(),
+      },
+      formState: { errors: mockErrors }, // Provide errors in formState
+      setValue: mockSetFormData,
+      watch: jest.fn(() => defaultFormData),
+    });
+
+    render(<LocationFields {...defaultProps} />);
 
     expect(screen.getByText('Department is required')).toBeInTheDocument();
     expect(screen.getByText('City is required')).toBeInTheDocument();

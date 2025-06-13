@@ -1,6 +1,6 @@
 import fetchMock from 'jest-fetch-mock';
 import { appraisalApiService } from '../appraisalApiService';
-import { N8nWebhookRequestBody, FormDataAppraisalResult } from '../../appraisal/types/appraisal-results';
+import { FormDataAppraisalResult } from '../../appraisal/types/appraisal-results';
 
 fetchMock.enableMocks();
 
@@ -103,7 +103,7 @@ describe('appraisalApiService', () => {
     materialQualityEntries: []
   };
 
-  const mockN8nWebhookRequestBody: N8nWebhookRequestBody = {
+  const mockN8nWebhookRequestBody = {
     requestId: "test-request-123",
     formData: mockFormDataAppraisalResult,
   };
@@ -128,7 +128,7 @@ describe('appraisalApiService', () => {
 
   test('submitAppraisal should throw an error on non-200 response', async () => {
     const errorResponse = { message: 'Submission failed' };
-    fetchMock.mockResponseOnce(errorResponse.message, { status: 400 });
+    fetchMock.mockResponseOnce(JSON.stringify(errorResponse), { status: 400 });
 
     await expect(appraisalApiService.submitAppraisal(mockN8nWebhookRequestBody.requestId, mockN8nWebhookRequestBody.formData)).rejects.toThrow(
       `Error 400: ${JSON.stringify(errorResponse)}`
@@ -169,21 +169,23 @@ describe('appraisalApiService', () => {
   });
 
   test('downloadPdf should download PDF successfully', async () => {
+    fetchMock.disableMocks(); // Temporarily disable fetchMock for this test
+
     const mockPdfBlob = new Blob(['mock pdf content'], { type: 'application/pdf' });
 
-    // Mockear fetch globalmente para este test
-    const originalFetch = global.fetch;
-    global.fetch = jest.fn(() =>
+    jest.spyOn(global, 'fetch').mockImplementationOnce(() =>
       Promise.resolve({
         ok: true,
         status: 200,
         headers: new Headers({ 'Content-Type': 'application/pdf' }),
         blob: () => Promise.resolve(mockPdfBlob),
+        json: () => Promise.resolve({}),
+        text: () => Promise.resolve(''),
       } as Response)
     );
 
     const accessToken = 'mock-access-token';
-    const result = await appraisalApiService.downloadPdf(mockN8nWebhookRequestBody, accessToken);
+    const result = await appraisalApiService.downloadPdf(mockN8nWebhookRequestBody.formData, accessToken);
 
     expect(result).toEqual(mockPdfBlob);
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -195,33 +197,63 @@ describe('appraisalApiService', () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(mockN8nWebhookRequestBody),
+        body: JSON.stringify(mockN8nWebhookRequestBody.formData),
       }
     );
-
-    // Restaurar fetch original
-    global.fetch = originalFetch;
+    fetchMock.enableMocks(); // Re-enable fetchMock after this test
   });
 
   test('downloadPdf should throw an error on non-200 response', async () => {
+    fetchMock.disableMocks(); // Temporarily disable fetchMock for this test
+
     const errorResponse = { message: 'PDF download failed' };
-    fetchMock.mockResponseOnce(JSON.stringify(errorResponse), { status: 400 });
+
+    jest.spyOn(global, 'fetch').mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve(errorResponse), // Mock json() method
+        text: () => Promise.resolve(JSON.stringify(errorResponse)), // Mock text() method
+      } as Response)
+    );
 
     const accessToken = 'mock-access-token';
-    await expect(appraisalApiService.downloadPdf(mockN8nWebhookRequestBody, accessToken)).rejects.toThrow(
+    await expect(appraisalApiService.downloadPdf(mockN8nWebhookRequestBody.formData, accessToken)).rejects.toThrow(
       errorResponse.message
     );
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/appraisal/download-pdf',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(mockN8nWebhookRequestBody.formData),
+      }
+    );
+    fetchMock.enableMocks(); // Re-enable fetchMock after this test
   });
 
   test('saveAppraisalResult should save appraisal successfully', async () => {
-    fetchMock.mockResponseOnce(JSON.stringify({ message: 'Appraisal saved successfully' }), { status: 200 });
+    fetchMock.disableMocks(); // Temporarily disable fetchMock for this test
+
+    jest.spyOn(global, 'fetch').mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ message: 'Appraisal saved successfully' }),
+        text: () => Promise.resolve(JSON.stringify({ message: 'Appraisal saved successfully' })),
+      } as Response)
+    );
 
     const userId = 'mock-user-id';
     const accessToken = 'mock-access-token';
-    await expect(appraisalApiService.saveAppraisalResult(mockN8nWebhookRequestBody, userId, accessToken)).resolves.toBeUndefined();
+    await expect(appraisalApiService.saveAppraisalResult(mockN8nWebhookRequestBody.formData, userId, accessToken)).resolves.toBeUndefined();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
       '/api/appraisal/save-result',
       {
         method: 'POST',
@@ -229,19 +261,43 @@ describe('appraisalApiService', () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ appraisalData: mockN8nWebhookRequestBody, userId: userId }),
+        body: JSON.stringify({ appraisalData: mockN8nWebhookRequestBody.formData, userId: userId }),
       }
     );
+    fetchMock.enableMocks(); // Re-enable fetchMock after this test
   });
 
   test('saveAppraisalResult should throw an error on non-200 response', async () => {
+    fetchMock.disableMocks(); // Temporarily disable fetchMock for this test
+
     const errorResponse = { message: 'Save failed' };
-    fetchMock.mockResponseOnce(JSON.stringify(errorResponse), { status: 400 });
+
+    jest.spyOn(global, 'fetch').mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve(errorResponse),
+        text: () => Promise.resolve(JSON.stringify(errorResponse)),
+      } as Response)
+    );
 
     const userId = 'mock-user-id';
     const accessToken = 'mock-access-token';
-    await expect(appraisalApiService.saveAppraisalResult(mockN8nWebhookRequestBody, userId, accessToken)).rejects.toThrow(
+    await expect(appraisalApiService.saveAppraisalResult(mockN8nWebhookRequestBody.formData, userId, accessToken)).rejects.toThrow(
       errorResponse.message
     );
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/appraisal/save-result',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ appraisalData: mockN8nWebhookRequestBody.formData, userId: userId }),
+      }
+    );
+    fetchMock.enableMocks(); // Re-enable fetchMock after this test
   });
 });

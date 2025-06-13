@@ -18,8 +18,8 @@ jest.mock('@/components/ui/select', () => ({
       {children}
     </select>
   ),
-  SelectTrigger: ({ children, ...props }: any) => <option {...props}>{children}</option>,
-  SelectValue: ({ placeholder }: any) => <option value="">{placeholder}</option>,
+  SelectTrigger: ({ children }: any) => <div>{children}</div>,
+  SelectValue: ({ placeholder }: any) => <span>{placeholder}</span>,
   SelectContent: ({ children }: any) => <>{children}</>,
   SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
 }));
@@ -32,18 +32,69 @@ describe('PropertyDetailsFields', () => {
     department: '',
     city: '',
     address: '',
-    area: null,
-    stratum: '',
-    adminFee: null,
+    documento_ficha_predial_catastral: false,
+    property_type: '',
+    estrato: '',
+    built_area: undefined,
+    pot_restriccion_uso_suelo: { selected: false },
+    pot_restriccion_edificabilidad: { selected: false },
+    pot_restriccion_altura: { selected: false },
+    pot_afectacion_via_publica: { selected: false },
+    pot_afectacion_ronda_hidrica: { selected: false },
+    pot_afectacion_infraestructura_servicios_publicos: { selected: false },
+    pot_otra_restriccion_pot: { selected: false },
+    zona_declaratoria_especial: { aplica: false, otras_restricciones_seleccion: "No aplica" },
+    contrato_escrito_vigente: '',
+    preferencia_requisito_futuro_contrato: '',
+    responsable_servicios_publicos: '',
+    gravamenes_cargas_seleccionados: [],
+    litigios_proceso_judicial_seleccionados: [],
+    impuestoPredialAlDia: undefined,
+    acceso_servicios_publicos: '',
+    serviciosConectadosFuncionando: undefined,
+    deudasServiciosPublicos: undefined,
+    condiciones_seguridad_salubridad: '',
+    cumpleNormasSismoresistencia: undefined,
+    riesgosEvidentesHabitabilidad: undefined,
+    seguros_obligatorios_recomendables: '',
+    cuentaPolizaSeguroVigente: undefined,
+    documento_certificado_tradicion_libertad: false,
+    documento_escritura_publica: false,
+    documento_recibo_impuesto_predial: false,
+    documento_paz_salvo_administracion: false,
+    documento_reglamento_ph: false,
+    legal_declarations: {
+      declaracion_veracidad: false,
+      entendimiento_alcance_analisis: false,
+      declaracion_propiedad_exclusiva: false,
+      declaracion_uso_previsto: false,
+      declaracion_cumplimiento_normas: false,
+      declaracion_sin_litigios: false,
+      declaracion_servidumbres: false,
+      declaracion_sin_afectaciones: false,
+      declaracion_impuestos_pagados: false,
+      declaracion_sin_deudas_asociacion: false,
+      declaracion_informacion_completa: false,
+      informacionVerazCompleta: false,
+      entendimientoAnalisisLegal: false,
+      autorizacionTratamientoDatos: false,
+    },
     expectedValue: 0,
-    propertyType: '',
-    materialQualityEntries: [],
+    images: [],
+    admin_fee: undefined,
+    ph_aplica: false,
+    ph_sometido_ley_675: false,
+    ph_reglamento_interno: false,
+    ph_reglamento_cubre_aspectos: false,
+    ph_escritura_registrada: false,
   };
+  const mockHandleStringChange = jest.fn();
   const defaultProps = {
     formData: defaultFormData,
     setFormData: mockSetFormData,
     errors: {},
     handleNumericChange: mockHandleNumericChange,
+    handleStringChange: mockHandleStringChange,
   };
 
   beforeEach(() => {
@@ -64,10 +115,10 @@ describe('PropertyDetailsFields', () => {
     const adminFeeInput = screen.getByLabelText(/Administración \(COP\)/i) as HTMLInputElement;
 
 
-    expect(areaInput).toHaveValue(null); // Value is null initially, renders as empty string
+    expect(areaInput).toHaveValue(''); // Value is null initially, renders as empty string
     expect(stratumSelect).toHaveValue('');
     expect(propertyTypeSelect).toHaveValue('');
-    expect(adminFeeInput).toHaveValue(null); // Value is null initially, renders as empty string
+    expect(adminFeeInput).toHaveValue(''); // Value is null initially, renders as empty string
 
     expect(areaInput).toHaveAttribute('type', 'number');
     expect(areaInput).toHaveAttribute('min', '0');
@@ -105,7 +156,7 @@ describe('PropertyDetailsFields', () => {
     fireEvent.change(areaInput, { target: { value: newArea } });
 
     expect(mockHandleNumericChange).toHaveBeenCalledTimes(1);
-    expect(mockHandleNumericChange).toHaveBeenCalledWith('area', newArea);
+    expect(mockHandleNumericChange).toHaveBeenCalledWith('built_area', newArea);
   });
 
   test('calls handleNumericChange when Administración input changes', () => {
@@ -116,7 +167,7 @@ describe('PropertyDetailsFields', () => {
     fireEvent.change(adminFeeInput, { target: { value: newAdminFee } });
 
     expect(mockHandleNumericChange).toHaveBeenCalledTimes(1);
-    expect(mockHandleNumericChange).toHaveBeenCalledWith('adminFee', newAdminFee);
+    expect(mockHandleNumericChange).toHaveBeenCalledWith('admin_fee', newAdminFee);
   });
 
   test('calls setFormData when Estrato select changes', () => {
@@ -128,7 +179,7 @@ describe('PropertyDetailsFields', () => {
     expect(mockSetFormData).toHaveBeenCalledTimes(1);
     expect(mockSetFormData).toHaveBeenCalledWith({
       ...defaultFormData,
-      stratum: '4',
+      estrato: '4',
     });
   });
 
@@ -141,16 +192,16 @@ describe('PropertyDetailsFields', () => {
     expect(mockSetFormData).toHaveBeenCalledTimes(1);
     expect(mockSetFormData).toHaveBeenCalledWith({
       ...defaultFormData,
-      propertyType: 'Casa',
+      property_type: 'Casa',
     });
   });
 
   test('displays error messages', () => {
     const errors = {
-      area: 'Area is required',
-      stratum: 'Stratum is required',
-      propertyType: 'Property type is required',
-      adminFee: 'Admin fee is required',
+      built_area: 'Area is required',
+      estrato: 'Stratum is required',
+      property_type: 'Property type is required',
+      admin_fee: 'Admin fee is required',
     };
     render(<PropertyDetailsFields {...defaultProps} errors={errors} />);
 
