@@ -1,3 +1,5 @@
+import { AppraisalResult } from "@/app/appraisal/types/appraisal-results";
+
 export const appraisalApiService = {
     submitAppraisal: async (requestId: string, formData: any): Promise<void> => { // Aceptar requestId, formData y accessToken
         try {
@@ -7,8 +9,8 @@ export const appraisalApiService = {
             };
 
             const n8nWebhookUrl = '/api/n8n/recepcion-datos-inmueble'; // Usar la ruta local proxied y especificar el nombre del webhook
-            console.log("DEBUG: Calling n8n webhook with URL:", n8nWebhookUrl); // Log antes de fetch
-            console.log("DEBUG: n8n webhook request body:", JSON.stringify(requestBody, null, 2)); // Log del cuerpo de la petición
+            ("DEBUG: Calling n8n webhook with URL:", n8nWebhookUrl); // Log antes de fetch
+            ("DEBUG: n8n webhook request body:", JSON.stringify(requestBody, null, 2)); // Log del cuerpo de la petición
             try {
                 const response = await fetch(n8nWebhookUrl, {
                     method: 'POST',
@@ -18,7 +20,7 @@ export const appraisalApiService = {
                     body: JSON.stringify(requestBody), // Enviar el cuerpo como JSON string
                 });
 
-                console.log("DEBUG: n8n webhook fetch response received.", { status: response.status, ok: response.ok }); // Log después de fetch
+                ("DEBUG: n8n webhook fetch response received.", { status: response.status, ok: response.ok }); // Log después de fetch
                 if (!response.ok) {
                 const errorBody = await response.text(); // Leer el cuerpo una sola vez como texto
                 let errorData = errorBody || 'Unknown server error';
@@ -34,7 +36,7 @@ export const appraisalApiService = {
                 throw new Error(`Error ${response.status}: ${errorData}`);
             }
 
-            console.log("DEBUG: n8n webhook call successful."); // Log de éxito
+            ("DEBUG: n8n webhook call successful."); // Log de éxito
 
             // Assuming success does not return a specific body needed by the hook
            } catch (error) {
@@ -70,9 +72,9 @@ export const appraisalApiService = {
      }
    },
 
-   downloadPdf: async (appraisalData: any, accessToken: string): Promise<Blob> => {
+   downloadPdf: async (appraisalData: AppraisalResult | null, accessToken: string): Promise<Blob> => {
      try {
-       console.log("DEBUG: Sending appraisalData for PDF download:", JSON.stringify(appraisalData, null, 2));
+       ("DEBUG: Sending appraisalData for PDF download:", JSON.stringify(appraisalData, null, 2));
        const response = await fetch('/api/appraisal/download-pdf', {
          method: 'POST',
          headers: {
@@ -94,7 +96,7 @@ export const appraisalApiService = {
      }
    },
 
-   saveAppraisalResult: async (appraisalData: any, userId: string | null, accessToken: string): Promise<void> => {
+   saveAppraisalResult: async (appraisalData: AppraisalResult | null, userId: string | null, accessToken: string): Promise<void> => {
      try {
        const requestBody = {
          appraisalData: appraisalData,

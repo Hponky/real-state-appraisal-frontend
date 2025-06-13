@@ -21,19 +21,29 @@ export default function SupabaseProvider({
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       // Opcional: Forzar una actualización de la ruta para que los Route Handlers lean la nueva cookie
-      // if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-      //   router.refresh();
-      // }
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        router.refresh();
+      }
     });
 
     // Obtener la sesión inicial al montar
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+
+      if (!session) {
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) {
+          console.error('SupabaseProvider: Error al iniciar sesión anónimamente:', error);
+        } else {
+          setSession(data.session);
+        }
+      }
     });
 
 

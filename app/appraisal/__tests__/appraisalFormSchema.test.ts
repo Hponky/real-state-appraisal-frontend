@@ -97,7 +97,6 @@ describe('AppraisalFormDataSchema', () => {
   test('should validate a valid form data object', () => {
     const result = AppraisalFormDataSchema.safeParse(validFormData);
     if (!result.success) {
-      console.log("Validation error for validFormData:", result.error);
     }
     expect(result.success).toBe(true);
   });
@@ -113,7 +112,6 @@ describe('AppraisalFormDataSchema', () => {
     };
     const resultMissing = AppraisalFormDataSchema.safeParse(formDataWithOptionalMissing);
     if (!resultMissing.success) {
-      console.log("Validation error for formDataWithOptionalMissing:", resultMissing.error);
     }
     expect(resultMissing.success).toBe(true);
 
@@ -127,7 +125,6 @@ describe('AppraisalFormDataSchema', () => {
     };
     const resultNull = AppraisalFormDataSchema.safeParse(formDataWithOptionalNull);
     if (!resultNull.success) {
-      console.log("Validation error for formDataWithOptionalNull:", resultNull.error);
     }
     expect(resultNull.success).toBe(true);
   });

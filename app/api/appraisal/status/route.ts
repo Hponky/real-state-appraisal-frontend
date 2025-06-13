@@ -26,29 +26,51 @@ export async function GET(request: Request) {
     }
 
 
-    const { data, error } = await supabase
-      .from('appraisals') // Asegúrate de que 'appraisals' es el nombre correcto de tu tabla
-      .select('id, status, initial_data, user_id') // Selecciona user_id también para depuración
+    // 1. Obtener datos de la tabla 'appraisals' (entrada del formulario)
+    const { data: appraisalDataFromAppraisals, error: appraisalError } = await supabase
+      .from('appraisals')
+      .select('id, status, initial_data, user_id')
       .eq('id', id)
-      .single(); // <--- Aquí se espera una única fila
+      .single();
 
-
-    if (error) {
-      return NextResponse.json({ error: 'Failed to fetch appraisal status', details: error.message }, { status: 500 });
+    if (appraisalError) {
+      console.error('[API /status] Error fetching appraisal status from appraisals table:', appraisalError);
+      return NextResponse.json({ error: 'Failed to fetch appraisal status', details: appraisalError.message }, { status: 500 });
     }
 
-    if (!data) {
+    if (!appraisalDataFromAppraisals) {
       return NextResponse.json({ error: 'Appraisal request not found' }, { status: 404 });
     }
 
-
-    if (data.status === 'completed') {
-      // Si está completo, devuelve los resultados con initial_data directamente
-      return NextResponse.json({ status: 'completed', results: { ...data, initial_data: data.initial_data } }, { status: 200 });
-    } else {
-      // Si no está completo, indica que está pendiente
-      return NextResponse.json({ status: data.status || 'pending' }, { status: 202 }); // 202 Accepted
+    // Si el estado no es 'completed', devuelve el estado actual sin buscar appraisal_data
+    if (appraisalDataFromAppraisals.status !== 'completed') {
+      return NextResponse.json({ status: appraisalDataFromAppraisals.status || 'pending' }, { status: 202 });
     }
+
+    // 2. Si el estado es 'completed', obtener datos de la tabla 'appraisal_results' (respuesta de n8n)
+    const { data: appraisalResultData, error: appraisalResultError } = await supabase
+      .from('appraisal_results') // Nombre de la tabla para los resultados de n8n
+      .select('appraisal_data') // Columna donde se guarda la respuesta completa de n8n
+      .eq('request_id', id) // Corregido a 'request_id' según el modelo Java
+      .limit(1);
+
+    if (appraisalResultError) {
+      console.error('[API /status] Error fetching appraisal results from appraisal_results table:', appraisalResultError);
+      return NextResponse.json({ error: 'Failed to fetch detailed appraisal results', details: appraisalResultError.message }, { status: 500 });
+    }
+
+    if (!appraisalResultData || appraisalResultData.length === 0 || !appraisalResultData[0].appraisal_data) {
+      return NextResponse.json({ error: 'Detailed appraisal results not found for completed appraisal' }, { status: 404 });
+    }
+
+    // 3. Combinar los resultados y enviarlos al frontend
+    return NextResponse.json({
+      status: 'completed',
+      results: {
+        initial_data: appraisalDataFromAppraisals.initial_data, // Datos del formulario del usuario
+        appraisal_data: appraisalResultData[0].appraisal_data,     // Respuesta completa de n8n
+      }
+    }, { status: 200 });
 
   } catch (error) {
     let errorMessage = 'Internal Server Error';
