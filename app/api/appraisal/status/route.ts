@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     // 2. Si el estado es 'completed', obtener datos de la tabla 'appraisal_results' (respuesta de n8n)
     const { data: appraisalResultData, error: appraisalResultError } = await supabase
       .from('appraisal_results') // Nombre de la tabla para los resultados de n8n
-      .select('appraisal_data') // Columna donde se guarda la respuesta completa de n8n
+      .select('id, appraisal_data') // Incluir el ID numérico
       .eq('request_id', id) // Corregido a 'request_id' según el modelo Java
       .limit(1);
 
@@ -62,14 +62,16 @@ export async function GET(request: Request) {
     if (!appraisalResultData || appraisalResultData.length === 0 || !appraisalResultData[0].appraisal_data) {
       return NextResponse.json({ error: 'Detailed appraisal results not found for completed appraisal' }, { status: 404 });
     }
+    console.log("DEBUG: ID being sent to frontend:", appraisalResultData[0].id);
 
     // 3. Combinar los resultados y enviarlos al frontend
     return NextResponse.json({
       status: 'completed',
       results: {
+        id: appraisalResultData[0].id, // Use the numeric ID from appraisal_results table
         initial_data: appraisalDataFromAppraisals.initial_data, // Datos del formulario del usuario
         appraisal_data: appraisalResultData[0].appraisal_data,     // Respuesta completa de n8n
-      }
+      },
     }, { status: 200 });
 
   } catch (error) {

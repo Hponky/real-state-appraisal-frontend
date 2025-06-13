@@ -197,7 +197,7 @@ export default function History() {
     }
 
     try {
-      await appraisalApiService.downloadPdf(appraisal.id, session.access_token);
+      await appraisalApiService.downloadPdf(appraisal.request_id, session.access_token);
       toast({
         title: "Descarga iniciada",
         description: "El PDF debería comenzar a descargarse en breve.",

@@ -75,7 +75,7 @@ export const appraisalApiService = {
      }
    },
 
-   downloadPdf: async (appraisalId: string, accessToken: string): Promise<void> => {
+   downloadPdf: async (appraisalId: string, accessToken: string, filename: string = `resultados-peritaje-${appraisalId}.pdf`): Promise<void> => {
      try {
        const response = await fetch(`/api/appraisal/download-pdf?appraisalId=${appraisalId}`, {
          method: 'GET',
@@ -83,7 +83,7 @@ export const appraisalApiService = {
            'Authorization': `Bearer ${accessToken}`,
          },
        });
-
+ 
        if (!response.ok) {
          const errorBody = await response.text();
          let errorData: string;
@@ -95,12 +95,12 @@ export const appraisalApiService = {
          }
          throw new Error(`Error ${response.status}: ${errorData}`);
        }
-
+ 
        const blob = await response.blob();
        const url = window.URL.createObjectURL(blob);
        const a = document.createElement('a');
        a.href = url;
-       a.download = `peritaje-${appraisalId}.pdf`;
+       a.download = filename;
        document.body.appendChild(a);
        a.click();
        a.remove();
@@ -111,10 +111,13 @@ export const appraisalApiService = {
      }
    },
 
-   saveAppraisalResult: async (appraisalData: AppraisalFormData, userId: string | null, accessToken: string): Promise<void> => {
+   saveAppraisalResult: async (appraisalResult: AppraisalResult, userId: string | null, accessToken: string): Promise<void> => {
      try {
        const requestBody = {
-         appraisalData: appraisalData,
+         appraisalData: {
+           initial_data: appraisalResult.initial_data,
+           appraisal_data: appraisalResult.appraisal_data,
+         },
          userId: userId,
        };
 

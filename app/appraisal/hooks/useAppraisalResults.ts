@@ -36,7 +36,8 @@ export function useAppraisalResults() {
           if (result.results && result.results.appraisal_data) {
             const parsedAppraisalData = JSON.parse(result.results.appraisal_data);
             setAppraisalData({
-              request_id: result.results.request_id,
+              id: result.results.id, // Extract the numeric ID
+              request_id: requestId, // Use requestId from URL params
               initial_data: result.results.initial_data,
               appraisal_data: {
                 analisis_mercado: parsedAppraisalData.analisis_mercado,
@@ -75,24 +76,29 @@ export function useAppraisalResults() {
   }, [user, loading, error, appraisalData]);
 
   const handleDownloadPdf = async () => {
-    if (!appraisalData?.request_id) {
+    if (!appraisalData?.request_id) { // Use appraisalData.request_id
+      toast({
+        title: "Error de descarga",
+        description: "No se pudo descargar el PDF: ID de peritaje no disponible.",
+        variant: "destructive",
+      });
       return;
     }
-
+ 
     if (user && user.email && session?.access_token) {
       try {
-        const pdfBlob = await appraisalApiService.downloadPdf(appraisalData, session.access_token);
-        const url = window.URL.createObjectURL(pdfBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `resultados-peritaje-${appraisalData.request_id}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-        return;
+        await appraisalApiService.downloadPdf(appraisalData.request_id, session.access_token); // Use appraisalData.request_id
+        toast({
+          title: "Descarga iniciada",
+          description: "El PDF debería comenzar a descargarse en breve.",
+        });
       } catch (err) {
-        setError("Error al descargar el PDF desde el servidor. Intentando descarga local...");
+        setError("Error al descargar el PDF desde el servidor.");
+        toast({
+          title: "Error de descarga",
+          description: "Error al descargar el PDF desde el servidor.",
+          variant: "destructive",
+        });
       }
     } else {
       toast({

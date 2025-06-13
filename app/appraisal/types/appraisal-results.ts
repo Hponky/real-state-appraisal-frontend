@@ -174,6 +174,7 @@ export interface InitialData {
 }
 
 export interface AppraisalResult {
+  id: string; // Add this field
   request_id: string;
   initial_data: InitialData;
   appraisal_data: {
