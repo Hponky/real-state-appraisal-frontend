@@ -24,8 +24,8 @@ const AppraisalDetailModal: React.FC<AppraisalDetailModalProps> = ({ isOpen, onC
 
   const formatKey = (key: string) => key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   const formatValue = (key: string, value: any) => {
-    if (key === 'area_usuario_m2' && typeof value === 'string') {
-      return value;
+    if (key === 'area_usuario_m2' && typeof value === 'number') {
+      return `${value} m²`;
     }
     if (typeof value === 'number') {
       return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(value);

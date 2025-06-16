@@ -43,7 +43,11 @@ type AuthFormData = LoginFormData & Partial<RegisterFormData>; // Combinar tipos
 
 export default function Auth() {
   const searchParams = useSearchParams();
-  const [isLogin, setIsLogin] = useState(searchParams.get("register") !== "true");
+  const [isLogin, setIsLogin] = useState(false); // Inicializar en false, el useEffect lo manejará
+
+  useEffect(() => {
+    setIsLogin(searchParams.get("register") !== "true");
+  }, [searchParams]);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -53,6 +57,14 @@ export default function Auth() {
 
   const { register, handleSubmit, formState: { errors } } = useForm<AuthFormData>({
     resolver: zodResolver(isLogin ? loginSchema : registerSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      fullName: "",
+      lastName: "",
+      idNumber: "",
+      phone: "",
+    },
   });
 
   const handleAuth = async (data: AuthFormData) => {
@@ -144,6 +156,7 @@ export default function Auth() {
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary py-8">
       <div className="container mx-auto px-4">
         <motion.div
+          key={isLogin ? "login" : "register"}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -270,7 +283,13 @@ export default function Auth() {
               {isLogin ? "¿No tienes una cuenta?" : "¿Ya tienes una cuenta?"}{" "}
               <button
                 type="button"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => {
+                  if (isLogin) {
+                    router.push("/auth?register=true");
+                  } else {
+                    router.push("/auth");
+                  }
+                }}
                 className="text-primary hover:underline"
               >
                 {isLogin ? "Regístrate" : "Inicia sesión"}
