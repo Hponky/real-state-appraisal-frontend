@@ -11,11 +11,12 @@ import { AppraisalCurrentRentValuation } from "@/components/appraisal-results/Ap
 import { AppraisalValorizationPotential } from "@/components/appraisal-results/AppraisalValorizationPotential";
 import { AppraisalLegalAnalysis } from "@/components/appraisal-results/AppraisalLegalAnalysis";
 import { AppraisalModals } from "@/components/appraisal-results/AppraisalModals";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Results() {
   const {
     appraisalData,
-    loading,
+    isLoading,
     error,
     showLoginModal,
     setShowLoginModal,
@@ -30,10 +31,23 @@ export default function Results() {
     session,
   } = useAppraisalResults();
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <p>Cargando resultados...</p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <Skeleton className="h-10 w-48" />
+          <div className="flex space-x-2">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </div>
+        <Skeleton className="h-8 w-1/3 mb-8" />
+        <div className="space-y-6">
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
       </div>
     );
   }
@@ -79,10 +93,10 @@ export default function Results() {
       >
         <h1 className="text-3xl font-bold mb-8">Resultados del Peritaje</h1>
 
-        <AppraisalMarketAnalysis marketAnalysis={appraisalData.appraisal_data.analisis_mercado} />
-        <AppraisalCurrentRentValuation currentRentValuation={appraisalData.appraisal_data.valoracion_arriendo_actual} />
-        <AppraisalValorizationPotential valorizationPotential={appraisalData.appraisal_data.potencial_valorizacion_con_mejoras_explicado} />
-        <AppraisalLegalAnalysis legalAnalysis={appraisalData.appraisal_data.analisis_legal_arrendamiento} />
+        <AppraisalMarketAnalysis marketAnalysis={appraisalData.result_data.analisis_mercado} />
+        <AppraisalCurrentRentValuation currentRentValuation={appraisalData.result_data.valoracion_arriendo_actual} />
+        <AppraisalValorizationPotential valorizationPotential={appraisalData.result_data.potencial_valorizacion_con_mejoras_explicado} />
+        <AppraisalLegalAnalysis legalAnalysis={appraisalData.result_data.analisis_legal_arrendamiento} />
       </motion.div>
 
       <AppraisalModals

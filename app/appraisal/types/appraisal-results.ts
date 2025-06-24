@@ -166,18 +166,26 @@ export interface AnalisisLegalArrendamiento {
 }
 
 export interface InitialData {
-  ciudad: string;
-  address: string;
-  area_usuario_m2: number;
-  tipo_inmueble: string;
-  estrato: string;
+  [key: string]: any; // Allow any other properties
+  ciudad?: string;
+  address?: string;
+  area_usuario_m2?: number;
+  tipo_inmueble?: string;
+  estrato?: string;
+  informacion_basica?: {
+    ciudad: string;
+    address: string;
+    area_usuario_m2: number;
+    tipo_inmueble: string;
+    estrato: string;
+  };
 }
 
 export interface AppraisalResult {
   id: string; // Add this field
   request_id: string;
-  initial_data: InitialData;
-  appraisal_data: {
+  form_data: InitialData;
+  result_data: {
     analisis_mercado: AnalisisMercadoArriendo;
     valoracion_arriendo_actual: ValoracionArriendoActual;
     potencial_valorizacion_con_mejoras_explicado: PotencialValorizacionArriendo;
@@ -197,4 +205,6 @@ export interface AppraisalResult {
   };
   user_id: string;
   created_at: string;
+  status: string;
+  anonymous_session_id?: string | null;
 }

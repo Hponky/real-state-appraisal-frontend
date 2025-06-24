@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { AppraisalResult, PuntoCritico, DocumentoClave } from "@/app/appraisal/types/appraisal-results";
 
 interface AppraisalLegalAnalysisProps {
-  legalAnalysis: AppraisalResult['appraisal_data']['analisis_legal_arrendamiento'];
+  legalAnalysis: AppraisalResult['result_data']['analisis_legal_arrendamiento'];
 }
 
 export function AppraisalLegalAnalysis({ legalAnalysis }: AppraisalLegalAnalysisProps) {

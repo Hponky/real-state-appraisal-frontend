@@ -57,16 +57,9 @@ export function useAppraisalSubmission({
         }
 
         // Si no hay usuario después de que el estado de auth se cargó, algo salió mal
-        if (!user) {
-             console.error('No user available after auth state loaded.');
-             toast({
-               title: "Error de usuario",
-               description: "No se pudo obtener información del usuario después de cargar el estado de autenticación.",
-               variant: "destructive",
-             });
-             setIsSubmitting(false);
-             return;
-        }
+        // Si no hay usuario, el peritaje se considera anónimo.
+        // El user_id se establecerá en null en la base de datos.
+        // La asociación se hará al iniciar sesión.
 
         const newRequestId = uuidv4();
         setRequestId(newRequestId); // Guardar el requestId en el estado
@@ -74,10 +67,14 @@ export function useAppraisalSubmission({
         try {
 
             // 1. Iniciar la creación de entrada pendiente en Supabase
+            const isAnonymous = user?.is_anonymous ?? true;
+
             const dataToInsert = {
                 id: newRequestId,
-                user_id: user.id, // Incluir el user_id
-                initial_data: formData,
+                user_id: isAnonymous ? null : user?.id,
+                anonymous_session_id: isAnonymous ? user?.id : null,
+                form_data: formData,
+                result_data: null,
                 status: 'pending',
                 created_at: new Date().toISOString(),
             };
@@ -98,6 +95,9 @@ export function useAppraisalSubmission({
                 return; // Detener el proceso si falla la inserción
             }
 
+            if (isAnonymous && user?.id) {
+                localStorage.setItem('anonymous_session_id', user.id);
+            }
 
             // Convertir imágenes a Base64
             const base64Images = await Promise.all(
@@ -128,20 +128,23 @@ const dataForN8n: AppraisalSubmissionPayload = {
 };
 
             // 2. Llamar a appraisalApiService para activar n8n
-            if (!session?.access_token) {
-                throw new Error("No se encontró el token de autenticación. Por favor, inicie sesión.");
-            }
-            await appraisalApiService.submitAppraisal(newRequestId, dataForN8n);
+            // Si no hay sesión, no se envía el token de autenticación.
+            // El backend debe estar preparado para manejar esto para peritajes anónimos.
+            // Guardar el requestId en localStorage para asociarlo después del login.
+            // La lógica para guardar el anonymousSessionId ya se maneja arriba.
+            // No se necesita más lógica de almacenamiento local aquí.
 
+            await appraisalApiService.submitAppraisal(newRequestId, dataForN8n, session?.access_token || null);
+
+            router.push(`/appraisal/results?id=${newRequestId}`);
 
             // NOTA: La lógica de espera y redirección ahora se maneja en el useEffect de suscripción a Realtime.
             // setIsSubmitting(false) se manejará cuando se reciba el estado final via Realtime o en caso de error.
 
         } catch (error: any) {
-            console.error("Error during form submission process (general catch):", error);
             toast({
-              title: "Error al enviar formulario",
-              description: error.message || "Ocurrió un error general al enviar el formulario. Por favor, intente de nuevo.",
+              title: "Error durante el envío",
+              description: error.message,
               variant: "destructive",
             });
             setIsSubmitting(false);
@@ -171,7 +174,6 @@ const dataForN8n: AppraisalSubmissionPayload = {
                           title: "Peritaje completado",
                           description: "El peritaje se ha completado exitosamente.",
                         });
-                        router.push(`/appraisal/results?id=${requestId}`);
                         setIsSubmitting(false); // Finalizar estado de submitting
                     } else if (updatedAppraisal && updatedAppraisal.status === 'failed') {
                          console.error("DEBUG: Appraisal failed via Realtime:", updatedAppraisal.error);

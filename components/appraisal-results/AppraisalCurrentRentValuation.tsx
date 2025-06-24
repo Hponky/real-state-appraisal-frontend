@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { AppraisalResult } from "@/app/appraisal/types/appraisal-results";
 
 interface AppraisalCurrentRentValuationProps {
-  currentRentValuation: AppraisalResult['appraisal_data']['valoracion_arriendo_actual'];
+  currentRentValuation: AppraisalResult['result_data']['valoracion_arriendo_actual'];
 }
 
 export function AppraisalCurrentRentValuation({ currentRentValuation }: AppraisalCurrentRentValuationProps) {

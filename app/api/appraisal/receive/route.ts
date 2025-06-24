@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js'; // Importar createClient
-import { supabase } from '@/lib/supabase'; // Asegúrate que la ruta a tu cliente supabase sea correcta
+import { revalidatePath } from 'next/cache';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 // El nombre de la variable de entorno que definiste en .env.local
 const EXPECTED_API_KEY = process.env.N8N_API_KEY;
 
@@ -62,113 +62,123 @@ export async function POST(request: Request) {
     }
 
     // --- 4. Guardar los datos recibidos de n8n en Supabase usando la clave de rol de servicio ---
-    // Crear una instancia del cliente Supabase con la clave de rol de servicio
-    const supabaseServiceRole = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!, // Usar la URL pública de Supabase
-      process.env.SUPABASE_SERVICE_ROLE_KEY! // Usar la clave de rol de servicio
-    );
-
     // Extraer la cookie de Supabase directamente del objeto consolidado
     const supabaseCookieString = consolidatedAppraisalData.cookie_sesion_origen;
 
     let userId: string | null = null;
+    let anonymousSessionId: string | null = null;
 
-    if (supabaseCookieString) {
-      // Buscar el token de acceso de Supabase en la cadena de la cookie
-      const authCookieNameMatch = supabaseCookieString.match(/sb-[a-z0-9]+-auth-token=(.*?)(?:;|$)/); // Capture the entire value after the equals sign until a semicolon or end of string
-      let accessToken = authCookieNameMatch ? decodeURIComponent(authCookieNameMatch[1]) : null; // Decodificar la cadena completa
+    // Priorizar userId si viene en el payload
+    if (consolidatedAppraisalData.userId) {
+      userId = consolidatedAppraisalData.userId;
+    } else if (supabaseCookieString) {
+      // Si no viene en el payload, intentar obtenerlo de la cookie de sesión
+      const authCookieNameMatch = supabaseCookieString.match(/sb-[a-z0-9]+-auth-token=(.*?)(?:;|$)/);
+      let accessToken = authCookieNameMatch ? decodeURIComponent(authCookieNameMatch[1]) : null;
 
       if (accessToken) {
         try {
-          // Supabase a veces envuelve el token en un array JSON stringificado
           const parsedTokenArray = JSON.parse(accessToken);
           if (Array.isArray(parsedTokenArray) && typeof parsedTokenArray[0] === 'string') {
-            accessToken = parsedTokenArray[0]; // Tomar el primer elemento que es el JWT
+            accessToken = parsedTokenArray[0];
           } else {
             console.warn("[API /receive] Access token is not a stringified JSON array or first element is not a string.");
           }
         } catch (parseError) {
           console.warn("[API /receive] Could not parse access token as JSON array, using as is:", accessToken);
-          // Si falla el parseo, el token podría ser un JWT directo, así que lo usamos tal cual.
         }
       }
 
       if (accessToken) {
-        const { data: { user }, error: userError } = await supabaseServiceRole.auth.getUser(accessToken);
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(accessToken);
 
         if (userError) {
           console.error("[API /receive] Error getting user from access token:", userError);
         } else if (user) {
-          userId = user.id;
+          // Supabase asigna un user.id incluso a sesiones anónimas.
+          // Para diferenciar, verificamos si el usuario tiene un email o phone (indicativo de autenticación).
+          if (user.email || user.phone) {
+            userId = user.id;
+            anonymousSessionId = null; // Asegurarse de que sea nulo para usuarios autenticados
+          } else {
+            // Si no tiene email ni phone, se considera una sesión anónima
+            anonymousSessionId = user.id;
+            userId = null; // Asegurarse de que sea nulo para sesiones anónimas
+          }
         } else {
           console.warn("[API /receive] No user found for the provided access token.");
         }
-      } else {
       }
-    } else {
     }
 
-    if (!userId) {
+    // Si no se encontró userId ni anonymousSessionId de la cookie,
+    // y si el payload trae un anonymousSessionId, usarlo.
+    // Esto asegura que el anonymousSessionId del payload tenga prioridad si no se pudo determinar desde la cookie.
+    if (!userId && !anonymousSessionId && consolidatedAppraisalData.anonymousSessionId) {
+      anonymousSessionId = consolidatedAppraisalData.anonymousSessionId;
     }
 
-    // Extraer solo los campos de resultados de la tasación del objeto consolidado
+    // --- 4. Preparar los datos para la tabla 'appraisals' ---
+
+    // Extraer los campos de resultados del peritaje del objeto consolidado
     const {
-      analisis_mercado_arriendo, // Nombre de campo corregido
+      analisis_mercado_arriendo,
       valoracion_arriendo_actual,
-      potencial_valorizacion_arriendo, // Nombre de campo corregido
+      potencial_valorizacion_arriendo,
       analisis_legal_arrendamiento,
-      metadata_llamadas_ia, // Nombre de campo corregido
-      informacion_basica, // Añadir informacion_basica para extraer datos iniciales
+      metadata_llamadas_ia,
+      informacion_basica,
     } = consolidatedAppraisalData;
 
-    // Construir el objeto initial_data con los campos requeridos
-    const initialData = {
-      ciudad: informacion_basica?.ciudad || 'N/A',
-      address: informacion_basica?.address || consolidatedAppraisalData.formData?.address,
-      area_usuario_m2: informacion_basica?.area_usuario_m2 || 0,
-      tipo_inmueble: informacion_basica?.tipo_inmueble || 'N/A',
-      estrato: informacion_basica?.estrato || 'N/A',
-    };
-
-    const appraisalResultData = {
-      initial_data: initialData, // Incluir initial_data aquí
-      analisis_mercado: analisis_mercado_arriendo, // Mapear al nombre esperado en la BD
+    // Construir el objeto de datos de resultado
+    const resultData = {
+      form_data: {
+        ciudad: informacion_basica?.ciudad || 'N/A',
+        address: informacion_basica?.address || consolidatedAppraisalData.formData?.address,
+        area_usuario_m2: informacion_basica?.area_usuario_m2 || 0,
+        tipo_inmueble: informacion_basica?.tipo_inmueble || 'N/A',
+        estrato: informacion_basica?.estrato || 'N/A',
+      },
+      analisis_mercado: analisis_mercado_arriendo,
       valoracion_arriendo_actual,
-      potencial_valorizacion_con_mejoras_explicado: potencial_valorizacion_arriendo, // Mapear al nombre esperado en la BD
+      potencial_valorizacion_con_mejoras_explicado: potencial_valorizacion_arriendo,
       analisis_legal_arrendamiento,
-      gemini_usage_metadata: metadata_llamadas_ia, // Mapear al nombre esperado en la BD
+      gemini_usage_metadata: metadata_llamadas_ia,
     };
 
-    const insertObject = {
-      request_id: requestId,
-      appraisal_data: appraisalResultData, // Guardar solo los resultados de la tasación
+    // Construir el objeto para la operación upsert en la tabla 'appraisals'
+    const upsertData = {
+      id: requestId,
+      form_data: consolidatedAppraisalData, // Guardar el formulario completo
+      result_data: resultData, // Guardar los resultados del peritaje
+      status: 'completed',
       user_id: userId,
-      created_at: new Date().toISOString(),
+      anonymous_session_id: anonymousSessionId,
     };
 
-    // 4. Guardar los datos recibidos de n8n en la tabla 'appraisal_results'
-    const { error: insertError } = await supabaseServiceRole
-      .from('appraisal_results')
-      .upsert(insertObject, { onConflict: 'request_id' }); // Usar upsert en lugar de insert, con request_id como clave de conflicto
-
-    if (insertError) {
-      console.error('DEBUG: Supabase Insert Error (appraisal_results):', insertError);
-      return NextResponse.json({ error: 'Failed to save detailed appraisal data', details: insertError.message }, { status: 500 });
-    }
-
-    // 5. Actualizar el estado de la solicitud en la tabla 'appraisals'
-    const { error: updateError } = await supabaseServiceRole
+    // --- 5. Guardar/Actualizar el registro en la tabla 'appraisals' ---
+    // Usar upsert para crear o actualizar el registro basado en el 'id' (requestId)
+    const { error } = await supabaseAdmin
       .from('appraisals')
-      .update({
-        status: 'completed', // Marca la solicitud como completada
-      })
-      .eq('id', requestId);
+      .upsert(upsertData, { onConflict: 'id' });
 
-    if (updateError) {
-      console.error('DEBUG: Supabase Update Error (appraisals status):', updateError);
-      return NextResponse.json({ error: 'Failed to update appraisal status', details: updateError.message }, { status: 500 });
+    if (error) {
+      console.error('DEBUG: Supabase Upsert Error (appraisals):', error);
+      return NextResponse.json({ error: 'Failed to save appraisal data', details: error.message }, { status: 500 });
     }
 
+    // --- 6. Revalidar la ruta de resultados para que el cliente vea los cambios ---
+    // Esto le dice a Next.js que la data para esta página ha cambiado y debe ser recargada.
+    // Es crucial para que la UI se actualice sin necesidad de recargar la página manualmente.
+    try {
+      const resultsPath = `/appraisal/results?id=${requestId}`;
+      revalidatePath(resultsPath);
+      console.log(`[API /receive] Successfully revalidated path: ${resultsPath}`);
+    } catch (revalidateError) {
+      // Si la revalidación falla, no es un error fatal para el flujo de n8n,
+      // pero sí es importante registrarlo para depuración.
+      console.error(`[API /receive] Failed to revalidate path for appraisal ${requestId}:`, revalidateError);
+    }
 
 
     // Responder a n8n para confirmar la recepción y procesamiento

@@ -1,11 +1,13 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Home, Gavel, TrendingUp, BarChart2 } from "lucide-react";
 import { AppraisalResult } from "@/app/appraisal/types/appraisal-results";
 import { format } from "date-fns";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type ParsedAppraisal = AppraisalResult & {
   id: string;
@@ -19,194 +21,189 @@ interface AppraisalDetailModalProps {
   onDownloadPdf: (appraisal: ParsedAppraisal) => void;
 }
 
+// Helper to format currency
+const formatCurrency = (value: number) => {
+  if (isNaN(value) || value === null) return "N/A";
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+};
+
+// Helper to get badge variant based on viability
+const getViabilityVariant = (viability: string = ""): "default" | "destructive" | "secondary" => {
+  const lowerCaseViability = viability.toLowerCase();
+  if (lowerCaseViability.includes("crítico") || lowerCaseViability.includes("no recomendable")) {
+    return "destructive";
+  }
+  if (lowerCaseViability.includes("viable con") || lowerCaseViability.includes("moderado")) {
+    return "secondary";
+  }
+  if (lowerCaseViability.includes("viable")) {
+    return "default";
+  }
+  return "secondary";
+};
+
+
 const AppraisalDetailModal: React.FC<AppraisalDetailModalProps> = ({ isOpen, onClose, appraisal, onDownloadPdf }) => {
   if (!appraisal) return null;
 
-  const formatKey = (key: string) => key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  const formatValue = (key: string, value: any) => {
-    if (key === 'area_usuario_m2' && typeof value === 'number') {
-      return `${value} m²`;
-    }
-    if (typeof value === 'number') {
-      return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(value);
-    }
-    if (typeof value === 'boolean') {
-      return value ? 'Sí' : 'No';
-    }
-    return String(value || 'N/A');
-  };
-
-  const renderDetail = (key: string, value: any) => {
-    const formattedValue = formatValue(key, value);
-    if (key === 'factores_positivos_potencial' || key === 'factores_negativos_potencial') {
-      if (Array.isArray(value)) {
-        return (
-          <div key={key} className="text-sm">
-            <span className="font-medium">{formatKey(key)}:</span>
-            <ul className="list-disc list-inside ml-4">
-              {value.map((item, index) => (
-                <li key={index} className="whitespace-pre-wrap">{item}</li>
-              ))}
-            </ul>
-          </div>
-        );
-      }
-      return (
-        <div key={key} className="text-sm">
-          <span className="font-medium">{formatKey(key)}:</span>
-          <div className="whitespace-pre-wrap">{String(value || 'N/A')}</div>
-        </div>
-      );
-    }
-    return (
-      <p key={key} className="text-sm">
-        <span className="font-medium">{formatKey(key)}:</span> {formattedValue}
-      </p>
-    );
-  };
-
-  const renderSection = (title: string, data: any, sectionKey: string) => {
-    if (!data || Object.keys(data).length === 0) return null;
-
-    return (
-      <AccordionItem value={sectionKey}>
-        <AccordionTrigger className="text-lg font-semibold">{title}</AccordionTrigger>
-        <AccordionContent>
-          <Card className="mt-2">
-            <CardContent className="pt-4">
-              {Object.entries(data).map(([key, value]) => {
-                if (key === 'requestId' || key === 'gemini_usage_metadata') return null;
-
-                if (key === 'analisis_cualitativo_arriendo' && typeof value === 'object' && value !== null) {
-                  return (
-                    <div key={key} className="mb-3">
-                      <p className="font-semibold text-md mb-1">{formatKey(key)}:</p>
-                      <Card className="ml-4 border-l-2 pl-4">
-                        <CardContent className="pt-4">
-                          {Object.entries(value).map(([subKey, subValue]) => {
-                            if (subKey === 'factores_positivos_potencial' || subKey === 'factores_negativos_potencial') {
-                              return (
-                                <div key={subKey} className="mb-3">
-                                  <p className="font-semibold text-sm mb-1">{formatKey(subKey)}:</p>
-                                  {Array.isArray(subValue) ? (
-                                    <ul className="list-disc list-inside ml-4">
-                                      {subValue.map((item, index) => (
-                                        <li key={index} className="whitespace-pre-wrap text-sm">{item}</li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <div className="whitespace-pre-wrap text-sm">{String(subValue || 'N/A')}</div>
-                                  )}
-                                </div>
-                              );
-                            }
-                            return renderDetail(subKey, subValue);
-                          })}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  );
-                }
-
-                if (typeof value === 'object' && value !== null) {
-                  if (Array.isArray(value)) {
-                    // Check if it's an array of strings (like factores_positivos_potencial or recomendaciones_proximos_pasos)
-                    if (value.length > 0 && typeof value[0] === 'string') {
-                      return (
-                        <div key={key} className="mb-3">
-                          <p className="font-semibold text-md mb-1">{formatKey(key)}:</p>
-                          <ul className="list-disc list-inside ml-4">
-                            {value.map((item: string, index: number) => (
-                              <li key={index} className="whitespace-pre-wrap">{item}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                    } else {
-                      // Existing logic for arrays of objects
-                      return (
-                        <div key={key} className="mb-3">
-                          <p className="font-semibold text-md mb-1">{formatKey(key)}:</p>
-                          {value.map((item, index) => (
-                            <Card key={index} className="mb-2 ml-4 border-l-2 pl-4">
-                              <CardContent className="pt-4">
-                                {Object.entries(item).map(([subKey, subValue]) => renderDetail(subKey, subValue))}
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      );
-                    }
-                  }
-                  // Existing logic for objects that are not arrays
-                  return (
-                    <div key={key} className="mb-3">
-                      <p className="font-semibold text-md mb-1">{formatKey(key)}:</p>
-                      <Card className="ml-4 border-l-2 pl-4">
-                        <CardContent className="pt-4">
-                          {Object.entries(value).map(([subKey, subValue]) => renderDetail(subKey, subValue))}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  );
-                }
-                return renderDetail(key, value);
-              })}
-            </CardContent>
-          </Card>
-        </AccordionContent>
-      </AccordionItem>
-    );
-  };
+  const { form_data, result_data } = appraisal;
+  const {
+    analisis_mercado,
+    valoracion_arriendo_actual,
+    potencial_valorizacion_con_mejoras_explicado,
+    analisis_legal_arrendamiento
+  } = result_data ?? {};
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto p-6">
-        <DialogHeader className="pb-4 border-b">
+      <DialogContent className="sm:max-w-4xl max-h-[95vh] overflow-y-auto p-6 bg-gray-50">
+        <DialogHeader className="pb-4 border-b text-left">
           <DialogTitle className="text-2xl font-bold text-gray-800">Detalles del Peritaje</DialogTitle>
           <DialogDescription className="text-gray-600">
-            Información completa del peritaje con ID: <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{appraisal.request_id || appraisal.id}</span>
+            ID: <span className="font-mono text-xs bg-gray-200 px-2 py-1 rounded">{appraisal.request_id || appraisal.id}</span>
           </DialogDescription>
-          <p className="text-sm text-gray-600 mt-2">
-            Dirección: <span className="font-medium">{appraisal?.initial_data?.address ?? 'Dirección no disponible'}</span>
-          </p>
         </DialogHeader>
-        <div className="py-4 space-y-6">
-          <p className="text-sm text-gray-500">
-            Fecha de Creación: <span className="font-medium">{appraisal.createdAt ? format(new Date(appraisal.createdAt), 'dd/MM/yyyy HH:mm') : 'N/A'}</span>
-          </p>
 
-          <Accordion type="multiple" className="w-full">
-            {renderSection("Información Básica", appraisal.initial_data ?? {}, "basic-info")}
-            {renderSection("Análisis de Mercado", appraisal.appraisal_data?.analisis_mercado ?? {}, "market-analysis")}
-            {renderSection("Valoración de Arriendo Actual", appraisal.appraisal_data?.valoracion_arriendo_actual ?? {}, "current-rent-valuation")}
-            {renderSection("Potencial de Valorización con Mejoras", appraisal.appraisal_data?.potencial_valorizacion_con_mejoras_explicado ?? {}, "improvement-potential")}
-            {renderSection("Análisis Cualitativo de Arriendo", (appraisal as any).analisis_cualitativo_arriendo ?? {}, "qualitative-rent-analysis")}
-            {renderSection("Análisis Legal de Arrendamiento", appraisal.appraisal_data?.analisis_legal_arrendamiento ?? {}, "legal-analysis")}
-            {(appraisal.appraisal_data?.analisis_legal_arrendamiento?.consideraciones_contractuales_sugeridas ?? []).length > 0 && (
-              <AccordionItem value="next-steps-recommendations">
-                <AccordionTrigger className="text-lg font-semibold">Recomendaciones y Próximos Pasos</AccordionTrigger>
-                <AccordionContent>
-                  <Card className="mt-2">
-                    <CardContent className="pt-4">
-                      <ul className="list-disc list-inside ml-4">
-                        {(appraisal.appraisal_data?.analisis_legal_arrendamiento?.consideraciones_contractuales_sugeridas ?? []).map((item, index) => (
-                          <li key={index} className="whitespace-pre-wrap">{item}</li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
+        <div className="py-4 space-y-6">
+          {/* Key Metrics Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="bg-green-50 border-green-200">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-green-800">Canon Mensual Estimado</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-green-700">
+                  {formatCurrency(valoracion_arriendo_actual?.estimacion_canon_mensual_cop ?? 0)}
+                </p>
+                <p className="text-xs text-gray-600 mt-2">{valoracion_arriendo_actual?.justificacion_estimacion_actual}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-blue-50 border-blue-200">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-blue-800">Canon Potencial con Mejoras</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-blue-700">
+                  {formatCurrency(potencial_valorizacion_con_mejoras_explicado?.canon_potencial_total_estimado_cop ?? 0)}
+                </p>
+                 <p className="text-xs text-gray-600 mt-2">{potencial_valorizacion_con_mejoras_explicado?.comentario_estrategia_valorizacion}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Accordion type="multiple" className="w-full space-y-4">
+            {/* Basic Info */}
+            <AccordionItem value="basic-info" className="bg-white rounded-lg border">
+              <AccordionTrigger className="px-4 text-lg font-semibold"><Home className="mr-2 h-5 w-5" /> Información del Inmueble</AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4">
+                  <div><p className="text-sm text-gray-500">Ciudad</p><p className="font-semibold">{form_data?.ciudad}</p></div>
+                  <div><p className="text-sm text-gray-500">Dirección</p><p className="font-semibold">{form_data?.direccion ?? 'N/A'}</p></div>
+                  <div><p className="text-sm text-gray-500">Tipo de Inmueble</p><p className="font-semibold">{form_data?.tipo_inmueble}</p></div>
+                  <div><p className="text-sm text-gray-500">Estrato</p><p className="font-semibold">{form_data?.estrato}</p></div>
+                  <div><p className="text-sm text-gray-500">Área (m²)</p><p className="font-semibold">{form_data?.area_usuario_m2}</p></div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Legal Analysis */}
+            {analisis_legal_arrendamiento && (
+              <AccordionItem value="legal-analysis" className="bg-white rounded-lg border">
+                <AccordionTrigger className="px-4 text-lg font-semibold"><Gavel className="mr-2 h-5 w-5" /> Análisis Legal</AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 space-y-4">
+                  <div className="pt-4">
+                    <p className="text-sm text-gray-500">Viabilidad General Preliminar</p>
+                    <Badge variant={getViabilityVariant(analisis_legal_arrendamiento.viabilidad_general_preliminar)} className="text-sm">
+                      {analisis_legal_arrendamiento.viabilidad_general_preliminar}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Resumen Ejecutivo</p>
+                    <p className="text-sm bg-gray-100 p-3 rounded-md">{analisis_legal_arrendamiento.resumen_ejecutivo_legal}</p>
+                  </div>
+
+                  {analisis_legal_arrendamiento.puntos_criticos_y_riesgos && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Puntos Críticos y Riesgos</h4>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Aspecto Legal</TableHead>
+                            <TableHead>Descripción del Riesgo</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {analisis_legal_arrendamiento.puntos_criticos_y_riesgos.map((item, index) => (
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">{item.aspecto_legal_relevante}</TableCell>
+                              <TableCell>{item.descripcion_implicacion_riesgo}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                 </AccordionContent>
               </AccordionItem>
             )}
-          </Accordion>
 
-          <div className="flex justify-end pt-4 border-t">
-            <Button onClick={() => onDownloadPdf(appraisal)} className="bg-blue-600 hover:bg-blue-700 text-white">
-              <Download className="w-4 h-4 mr-2" />
-              Descargar PDF
-            </Button>
-          </div>
+            {/* Improvement Potential */}
+            {potencial_valorizacion_con_mejoras_explicado?.mejoras_con_impacto_detallado && (
+              <AccordionItem value="improvement-potential" className="bg-white rounded-lg border">
+                <AccordionTrigger className="px-4 text-lg font-semibold"><TrendingUp className="mr-2 h-5 w-5" /> Potencial de Mejoras</AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                   <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Recomendación</TableHead>
+                            <TableHead>Justificación</TableHead>
+                            <TableHead className="text-right">Incremento Estimado</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {potencial_valorizacion_con_mejoras_explicado.mejoras_con_impacto_detallado.map((item, index) => (
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">{item.recomendacion_tecnica_evaluada}</TableCell>
+                              <TableCell className="text-xs">{item.justificacion_estimacion_incremento_economico}</TableCell>
+                              <TableCell className="text-right font-semibold text-green-600">{formatCurrency(item.incremento_estimado_canon_cop)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+            
+            {/* Market Analysis */}
+            {analisis_mercado && (
+              <AccordionItem value="market-analysis" className="bg-white rounded-lg border">
+                <AccordionTrigger className="px-4 text-lg font-semibold"><BarChart2 className="mr-2 h-5 w-5" /> Análisis de Mercado</AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 space-y-4">
+                    <div className="pt-4">
+                        <p className="text-sm text-gray-500">Rango de Arriendo de Referencia</p>
+                        <p className="font-semibold">{formatCurrency(analisis_mercado.rango_arriendo_referencias_cop.min)} - {formatCurrency(analisis_mercado.rango_arriendo_referencias_cop.max)}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-500">Observación del Mercado</p>
+                        <p className="text-sm bg-gray-100 p-3 rounded-md">{analisis_mercado.observacion_mercado}</p>
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+          </Accordion>
+        </div>
+
+        <div className="flex justify-end pt-4 mt-4 border-t">
+          <Button onClick={() => onDownloadPdf(appraisal)} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Download className="w-4 h-4 mr-2" />
+            Descargar Informe PDF
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

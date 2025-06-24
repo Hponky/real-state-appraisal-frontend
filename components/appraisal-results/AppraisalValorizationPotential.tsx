@@ -8,7 +8,7 @@ import {
 import { AppraisalResult, MejoraConImpactoDetallado } from "@/app/appraisal/types/appraisal-results";
 
 interface AppraisalValorizationPotentialProps {
-  valorizationPotential: AppraisalResult['appraisal_data']['potencial_valorizacion_con_mejoras_explicado'];
+  valorizationPotential: AppraisalResult['result_data']['potencial_valorizacion_con_mejoras_explicado'];
 }
 
 export function AppraisalValorizationPotential({ valorizationPotential }: AppraisalValorizationPotentialProps) {

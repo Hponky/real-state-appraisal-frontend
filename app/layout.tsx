@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import SupabaseProvider from '@/components/supabase-provider'; // Importar el proveedor
 import Navbar from '@/components/Navbar'; // Importar el componente Navbar
+import { Toaster } from '@/components/ui/toaster';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -22,6 +23,7 @@ export default function RootLayout({
         <SupabaseProvider> {/* Envolver con el proveedor */}
           <Navbar /> {/* Renderizar el Navbar */}
           {children}
+          <Toaster />
         </SupabaseProvider>
       </body>
     </html>

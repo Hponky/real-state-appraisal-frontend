@@ -1,82 +1,162 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AppraisalResult } from "@/app/appraisal/types/appraisal-results";
 import { useAuth } from "@/hooks/useAuth";
 import { appraisalApiService } from "@/app/services/appraisalApiService";
 import { useToast } from "@/hooks/use-toast";
+import { useSupabase } from "@/components/supabase-provider";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 export function useAppraisalResults() {
+  const { supabase, session: userSession } = useSupabase(); // Use the shared client
   const [appraisalData, setAppraisalData] = useState<AppraisalResult | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showAlreadySavedModal, setShowAlreadySavedModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { user, session } = useAuth();
+  const { user, isLoading: isAuthLoading, isInitialAuthLoaded } = useAuth();
   const { toast } = useToast();
+
+  const fetchAndSetAppraisal = useCallback(async (requestId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/appraisal/details?id=${requestId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log(`Appraisal ${requestId} not found yet. Starting listener.`);
+          return null;
+        }
+        throw new Error(`Failed to fetch appraisal: ${response.statusText}`);
+      }
+
+      const appraisal: AppraisalResult = await response.json();
+
+      if (appraisal) {
+        setAppraisalData(appraisal);
+        if (appraisal.status === 'completed') {
+          setIsLoading(false);
+          return appraisal;
+        }
+      }
+      return appraisal;
+    } catch (err: any) {
+      console.error("Error fetching appraisal:", err);
+      setError("Failed to fetch appraisal data.");
+      setIsLoading(false);
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const requestId = params.get('id');
+    let channel: RealtimeChannel | null = null;
+    let pollInterval: NodeJS.Timeout | null = null;
 
     if (!requestId) {
       setError("No appraisal request ID found in the URL.");
-      setLoading(false);
+      setIsLoading(false);
       return;
     }
 
-    const fetchResults = async () => {
-      try {
-        const response = await fetch(`/api/appraisal/status?id=${requestId}`, {
-          credentials: 'include',
-        });
-        const result = await response.json();
-
-        if (response.ok && result.status === 'completed') {
-          if (result.results && result.results.appraisal_data) {
-            const parsedAppraisalData = JSON.parse(result.results.appraisal_data);
-            setAppraisalData({
-              id: result.results.id, // Extract the numeric ID
-              request_id: requestId, // Use requestId from URL params
-              initial_data: result.results.initial_data,
-              appraisal_data: {
-                analisis_mercado: parsedAppraisalData.analisis_mercado,
-                valoracion_arriendo_actual: parsedAppraisalData.valoracion_arriendo_actual,
-                potencial_valorizacion_con_mejoras_explicado: parsedAppraisalData.potencial_valorizacion_con_mejoras_explicado,
-                analisis_legal_arrendamiento: parsedAppraisalData.analisis_legal_arrendamiento,
-                gemini_usage_metadata: parsedAppraisalData.gemini_usage_metadata,
-              },
-              user_id: result.results.user_id,
-              created_at: result.results.created_at,
-            });
-          } else {
-            setError("Invalid appraisal results format or missing appraisal data.");
-          }
-        } else if (response.status === 202) {
-          setError("Appraisal is still pending. Please wait or try refreshing.");
-        } else {
-          setError(result.error || 'Failed to fetch appraisal results.');
-        }
-      } catch (error) {
-        let errorMessage = 'Failed to load appraisal results.';
-        if (error instanceof Error) errorMessage = error.message;
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
+    const cleanup = () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
       }
     };
 
-    fetchResults();
-  }, []);
+    const setupSubscription = () => {
+      channel = supabase
+        .channel(`appraisal-updates-${requestId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'appraisals',
+            filter: `id=eq.${requestId}`,
+          },
+          (payload) => {
+            console.log('Received realtime update:', payload);
+            const updatedAppraisal = payload.new as AppraisalResult;
+            setAppraisalData(updatedAppraisal);
+            if (updatedAppraisal.status === 'completed') {
+              setIsLoading(false);
+              cleanup();
+            }
+          }
+        )
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            console.log(`Successfully subscribed to appraisal ${requestId}`);
+          }
+          if (status === 'CHANNEL_ERROR') {
+            console.error('Subscription error:', err);
+            setError('Connection to real-time service failed.');
+            setIsLoading(false);
+            cleanup();
+          }
+        });
+    };
+
+    const startPolling = () => {
+      if (pollInterval) return; // Evitar múltiples intervalos
+      console.log(`Starting polling for appraisal ${requestId}`);
+      pollInterval = setInterval(async () => {
+        console.log(`Polling for appraisal ${requestId}...`);
+        const data = await fetchAndSetAppraisal(requestId);
+        if (data?.status === 'completed') {
+          console.log(`Polling found completed appraisal ${requestId}. Stopping.`);
+          cleanup();
+        }
+      }, 5000); // Sondeo cada 5 segundos
+    };
+
+    const initialize = async () => {
+      const initialData = await fetchAndSetAppraisal(requestId);
+
+      if (initialData?.status !== 'completed') {
+        setupSubscription();
+        startPolling();
+      }
+    };
+
+    initialize();
+
+    return cleanup;
+  }, [fetchAndSetAppraisal, supabase]);
 
   useEffect(() => {
-    if (!user?.email && !loading && !error && appraisalData) {
+    // Solo mostrar el modal si el usuario no está autenticado, la carga del peritaje ha terminado,
+    // no hay errores, hay datos de peritaje Y la autenticación ha terminado de cargar.
+    // Mostrar el modal de inicio de sesión solo si:
+    // 1. Hay datos de peritaje cargados.
+    // 2. La carga del peritaje ha terminado.
+    // 3. No hay errores.
+    // 4. La autenticación ha terminado de cargar.
+    // 5. El usuario es anónimo (tiene un ID pero no un email).
+    // 6. El peritaje no ha sido guardado previamente por un usuario autenticado.
+    if (
+      appraisalData &&
+      !isLoading &&
+      !error &&
+      isInitialAuthLoaded && // Asegurarse de que la carga inicial de autenticación haya terminado
+      user?.id && // El usuario tiene un ID (es decir, hay una sesión, incluso anónima)
+      !user?.email && // Pero no tiene un email (es decir, es anónimo)
+      appraisalData.user_id === null // Y el peritaje no está asociado a un usuario autenticado
+    ) {
       setShowLoginModal(true);
     }
-  }, [user, loading, error, appraisalData]);
+  }, [user, isLoading, error, appraisalData, isAuthLoading, isInitialAuthLoaded]);
 
   const handleDownloadPdf = async () => {
-    if (!appraisalData?.request_id) { // Use appraisalData.request_id
+    if (!appraisalData?.request_id) {
       toast({
         title: "Error de descarga",
         description: "No se pudo descargar el PDF: ID de peritaje no disponible.",
@@ -84,10 +164,10 @@ export function useAppraisalResults() {
       });
       return;
     }
- 
-    if (user && user.email && session?.access_token) {
+
+    if (user && user.email && userSession?.access_token) {
       try {
-        await appraisalApiService.downloadPdf(appraisalData.request_id, session.access_token); // Use appraisalData.request_id
+        await appraisalApiService.downloadPdf(appraisalData.request_id, userSession.access_token);
         toast({
           title: "Descarga iniciada",
           description: "El PDF debería comenzar a descargarse en breve.",
@@ -110,7 +190,7 @@ export function useAppraisalResults() {
   };
 
   const handleSaveAppraisal = async () => {
-    if (!user || !user.email || !session?.access_token) {
+    if (!user || !user.email || !userSession?.access_token) {
       setShowLoginModal(true);
       return;
     }
@@ -128,7 +208,7 @@ export function useAppraisalResults() {
       await appraisalApiService.saveAppraisalResult(
         appraisalData,
         user?.id || null,
-        session.access_token
+        userSession.access_token
       );
       setShowSuccessModal(true);
     } catch (err: any) {
@@ -148,7 +228,7 @@ export function useAppraisalResults() {
 
   return {
     appraisalData,
-    loading,
+    isLoading,
     error,
     showLoginModal,
     setShowLoginModal,
@@ -160,6 +240,6 @@ export function useAppraisalResults() {
     handleDownloadPdf,
     handleSaveAppraisal,
     user,
-    session,
+    session: userSession,
   };
 }

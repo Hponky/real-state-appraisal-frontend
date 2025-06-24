@@ -47,13 +47,20 @@ export default function Auth() {
 
   useEffect(() => {
     setIsLogin(searchParams.get("register") !== "true");
+    console.log("Auth Page - Initial isLogin:", searchParams.get("register") !== "true");
   }, [searchParams]);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { supabase } = useSupabase(); // Obtener la instancia de supabase del contexto
-  const { session } = useAuth(); // Obtener la sesión de useAuth
+  const { session, user } = useAuth(); // Obtener la sesión y el usuario de useAuth
   const { toast } = useToast(); // Obtener la función toast
+
+  useEffect(() => {
+    console.log("Auth Page - Current isLogin state:", isLogin);
+    console.log("Auth Page - Supabase session:", session);
+    console.log("Auth Page - Supabase user:", user);
+  }, [isLogin, session, user]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<AuthFormData>({
     resolver: zodResolver(isLogin ? loginSchema : registerSchema),
@@ -83,7 +90,7 @@ export default function Auth() {
           title: "Inicio de sesión exitoso",
           description: "Has iniciado sesión correctamente.",
         });
-        router.push("/");
+        // No redirigir inmediatamente, la lógica de asociación se encargará de eso
       } else {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: data.email,
@@ -151,6 +158,52 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  // useEffect para manejar la asociación de datos anónimos después del login
+  useEffect(() => {
+    const associateAnonymousData = async () => {
+      // Asegurarse de que tenemos un usuario autenticado y no anónimo
+      if (session && user && !user.is_anonymous) {
+        const anonymousSessionId = localStorage.getItem('anonymous_session_id');
+
+        if (anonymousSessionId) {
+          try {
+            // Llamar al servicio de la API para asociar los datos
+            await appraisalApiService.associateAnonymousAppraisals(anonymousSessionId, user.id);
+
+            // Limpiar el ID de localStorage tras el éxito
+            localStorage.removeItem('anonymous_session_id');
+
+            toast({
+              title: "Cuenta actualizada",
+              description: "Tus actividades anónimas han sido asociadas a tu cuenta.",
+            });
+
+            // Redirigir al historial para ver los resultados combinados
+            router.push("/history");
+
+          } catch (error: any) {
+            console.error("Error al asociar datos anónimos:", error);
+            toast({
+              title: "Error de asociación",
+              description: "No se pudieron asociar tus datos anónimos. Por favor, contacta a soporte.",
+              variant: "destructive",
+            });
+            // Redirigir a home incluso si falla para no bloquear al usuario
+            router.push("/");
+          }
+        } else {
+          // Si no hay ID anónimo, simplemente redirigir a la página principal
+          router.push("/");
+        }
+      }
+    };
+
+    // Ejecutar la lógica solo cuando el usuario y la sesión estén definidos
+    if (user && session) {
+      associateAnonymousData();
+    }
+  }, [user, session, router, toast]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary py-8">

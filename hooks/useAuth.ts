@@ -4,25 +4,24 @@ import { useSupabase } from '@/components/supabase-provider'; // Importar el hoo
 
 interface AuthState {
   user: User | null;
-  session: Session | null; // Añadir la sesión al estado de autenticación
-  isLoading: boolean; // Mantener isLoading si es necesario para otros usos del hook
+  session: Session | null;
+  isLoading: boolean; // True while any auth operation is in progress (e.g., initial session fetch, sign in/out)
+  isInitialAuthLoaded: boolean; // True once the initial getSession() check is definitively done
 }
 
 export function useAuth(): AuthState {
-  // Obtener el cliente Supabase y la sesión del contexto del proveedor
   const { supabase, session } = useSupabase();
-
-  // El estado de carga ahora puede derivarse de si la sesión ya se ha cargado
-  // O podrías mantener un estado isLoading si necesitas un control más granular
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialAuthLoaded, setIsInitialAuthLoaded] = useState(false);
 
   useEffect(() => {
-    // La sesión ya es manejada por el proveedor, solo necesitamos reaccionar a ella
-    if (session !== undefined) { // session puede ser null o un objeto Session
-      setIsLoading(false);
+    // This effect runs whenever the session from SupabaseProvider changes.
+    // It indicates that the session state has been updated.
+    if (session !== undefined) { // session can be null or a Session object
+      setIsLoading(false); // Auth is no longer "loading" in the general sense
+      setIsInitialAuthLoaded(true); // The initial check is done
     }
-  }, [session]); // Depende de la sesión proporcionada por el contexto
+  }, [session]);
 
-  // Devolver el usuario de la sesión del proveedor, la sesión y el estado de carga local
-  return { user: session?.user ?? null, session: session ?? null, isLoading };
+  return { user: session?.user ?? null, session: session ?? null, isLoading, isInitialAuthLoaded };
 }

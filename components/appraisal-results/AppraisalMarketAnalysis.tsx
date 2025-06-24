@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { AppraisalResult } from "@/app/appraisal/types/appraisal-results";
 
 interface AppraisalMarketAnalysisProps {
-  marketAnalysis: AppraisalResult['appraisal_data']['analisis_mercado'];
+  marketAnalysis: AppraisalResult['result_data']['analisis_mercado'];
 }
 
 export function AppraisalMarketAnalysis({ marketAnalysis }: AppraisalMarketAnalysisProps) {

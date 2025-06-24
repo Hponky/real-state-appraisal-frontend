@@ -218,15 +218,17 @@ describe('appraisalApiService', () => {
   });
 
   const mockAppraisalResult: AppraisalResult = {
+    id: "test-appraisal-id-456",
     request_id: "test-request-123",
-    initial_data: {
+    status: "completed",
+    form_data: {
       ciudad: "Manizales",
       address: "Calle 123 #45-67",
       area_usuario_m2: 80,
       tipo_inmueble: "Casa",
       estrato: "4",
     },
-    appraisal_data: {
+    result_data: {
       analisis_mercado: {
         rango_arriendo_referencias_cop: { min: 1000000, max: 1500000 },
         observacion_mercado: "Mercado estable con demanda creciente.",
@@ -339,7 +341,7 @@ describe('appraisalApiService', () => {
 
     const userId = 'mock-user-id';
     const accessToken = 'mock-access-token';
-    await expect(appraisalApiService.saveAppraisalResult(mockAppraisalFormData, userId, accessToken)).resolves.toBeUndefined();
+    await expect(appraisalApiService.saveAppraisalResult(mockAppraisalResult, userId, accessToken)).resolves.toBeUndefined();
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
@@ -350,7 +352,13 @@ describe('appraisalApiService', () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ appraisalData: mockAppraisalFormData, userId: userId }),
+        body: JSON.stringify({
+          appraisalData: {
+            form_data: mockAppraisalResult.form_data,
+            result_data: mockAppraisalResult.result_data,
+          },
+          userId: userId,
+        }),
       }
     );
   });
@@ -369,7 +377,7 @@ describe('appraisalApiService', () => {
 
     const userId = 'mock-user-id';
     const accessToken = 'mock-access-token';
-    await expect(appraisalApiService.saveAppraisalResult(mockAppraisalFormData, userId, accessToken)).rejects.toThrow(
+    await expect(appraisalApiService.saveAppraisalResult(mockAppraisalResult, userId, accessToken)).rejects.toThrow(
       errorResponse.message
     );
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -381,7 +389,13 @@ describe('appraisalApiService', () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ appraisalData: mockAppraisalFormData, userId: userId }),
+        body: JSON.stringify({
+          appraisalData: {
+            form_data: mockAppraisalResult.form_data,
+            result_data: mockAppraisalResult.result_data,
+          },
+          userId: userId,
+        }),
       }
     );
   });

@@ -12,9 +12,9 @@ import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { appraisalApiService } from "@/app/services/appraisalApiService";
 import { AppraisalResult } from "@/app/appraisal/types/appraisal-results";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AppraisalDetailModal from "@/components/AppraisalDetailModal";
 import { useToast } from "@/hooks/use-toast";
+import { useSupabase } from "@/components/supabase-provider";
 
 type AppraisalHistoryItem = {
   id: string;
@@ -37,131 +37,75 @@ export default function History() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
   const { user, session, isLoading: isAuthLoading } = useAuth();
+  const { supabase } = useSupabase();
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchAppraisals = async () => {
-      if (isAuthLoading) return; // Esperar a que la autenticación termine de cargar
-
-      if (!user || !session?.access_token) {
-        toast({
-          title: "Error de autenticación",
-          description: "Debes iniciar sesión para ver tu historial de peritajes.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
+      if (isAuthLoading) return;
+      setLoading(true);
 
       try {
-        const data: AppraisalHistoryItem[] = await appraisalApiService.getAppraisalHistory(session.access_token);
+        let data: any[] = [];
+        if (user && session?.access_token) {
+          // Usuario autenticado
+          data = await appraisalApiService.getAppraisalHistory(session.access_token);
+        } else {
+          // Usuario anónimo
+          const anonymousSessionId = localStorage.getItem('anonymous_session_id');
+          if (anonymousSessionId) {
+            if (supabase) {
+              data = await appraisalApiService.getAnonymousAppraisals(supabase, anonymousSessionId);
+            }
+          }
+        }
+        
+        // La lógica de parseo es compleja y se puede reutilizar para ambos casos
         const parsedData: ParsedAppraisal[] = data.map(item => {
           try {
-            const rawAppraisalContent = JSON.parse(item.appraisalData);
+            // Los datos ahora vienen como objetos, no es necesario el parseo.
+            const formDataRaw = item.formData || {};
+            const resultDataRaw = item.resultData || {};
 
-            // Construct an object that fully conforms to AppraisalResult
+            // Normalizar la estructura de form_data
+            const infoBasica = formDataRaw.informacion_basica || formDataRaw;
+            const finalFormData = {
+              ...formDataRaw,
+              ...infoBasica,
+            };
+            
+            // Normalizar la estructura de result_data
+            const finalResultData = resultDataRaw.result_data || resultDataRaw;
+
             const appraisalResult: AppraisalResult = {
-              request_id: item.requestId, // Use requestId from AppraisalHistoryItem
-              user_id: user?.id || '', // Ensure user_id is present
-              created_at: item.createdAt, // Ensure created_at is present
-              initial_data: rawAppraisalContent.initial_data || { // Provide default if missing from raw content
-                ciudad: rawAppraisalContent.initial_data?.ciudad || 'N/A',
-                address: rawAppraisalContent.initial_data?.address || 'N/A',
-                area_usuario_m2: rawAppraisalContent.initial_data?.area_usuario_m2 || 0,
-                tipo_inmueble: rawAppraisalContent.initial_data?.tipo_inmueble || 'N/A',
-                estrato: rawAppraisalContent.initial_data?.estrato || 'N/A',
-              },
-              appraisal_data: {
-                analisis_mercado: rawAppraisalContent.analisis_mercado || { rango_arriendo_referencias_cop: { min: 0, max: 0 }, observacion_mercado: 'N/A' },
-                valoracion_arriendo_actual: rawAppraisalContent.valoracion_arriendo_actual || { estimacion_canon_mensual_cop: 0, justificacion_estimacion_actual: 'N/A' },
-                potencial_valorizacion_con_mejoras_explicado: rawAppraisalContent.potencial_valorizacion_con_mejoras_explicado || { mejoras_con_impacto_detallado: [], canon_potencial_total_estimado_cop: 0, comentario_estrategia_valorizacion: 'N/A' },
-                analisis_legal_arrendamiento: rawAppraisalContent.analisis_legal_arrendamiento || {
-                  requestId: item.requestId, // Use item.requestId here
-                  tipo_uso_principal_analizado: 'N/A',
-                  viabilidad_general_preliminar: 'N/A',
-                  puntos_criticos_y_riesgos: [],
-                  documentacion_clave_a_revisar_o_completar: [],
-                  consideraciones_contractuales_sugeridas: [],
-                  resumen_ejecutivo_legal: 'N/A',
-                },
-                gemini_usage_metadata: rawAppraisalContent.gemini_usage_metadata || {
-                  economico: {
-                    promptTokenCount: 0,
-                    candidatesTokenCount: 0,
-                    totalTokenCount: 0,
-                    promptTokensDetails: [],
-                    thoughtsTokenCount: 0,
-                  },
-                },
-              },
+              id: item.id,
+              request_id: finalFormData.requestId || item.id,
+              user_id: item.userId,
+              created_at: item.createdAt,
+              form_data: finalFormData,
+              result_data: finalResultData,
+              status: item.status,
             };
 
-            // Now, construct ParsedAppraisal
             return {
-              id: item.id,
               createdAt: item.createdAt,
-              ...appraisalResult, // Spread the correctly formed AppraisalResult
+              ...appraisalResult,
             };
           } catch (e) {
-            console.error("Error parsing appraisalData for item:", item.id, e);
-            // Fallback for parsing errors, ensuring a valid ParsedAppraisal object is returned
-            return {
-              id: item.id,
-              createdAt: item.createdAt,
-              request_id: item.requestId || item.id, // Use item.requestId, fallback to item.id
-              user_id: user?.id || '',
-              created_at: item.createdAt,
-              initial_data: {
-                ciudad: 'N/A',
-                address: 'N/A',
-                area_usuario_m2: 0,
-                tipo_inmueble: 'N/A',
-                estrato: 'N/A',
-              },
-              appraisal_data: {
-                analisis_mercado: {
-                  rango_arriendo_referencias_cop: { min: 0, max: 0 },
-                  observacion_mercado: 'N/A',
-                },
-                valoracion_arriendo_actual: {
-                  estimacion_canon_mensual_cop: 0,
-                  justificacion_estimacion_actual: 'N/A',
-                },
-                potencial_valorizacion_con_mejoras_explicado: {
-                  mejoras_con_impacto_detallado: [],
-                  canon_potencial_total_estimado_cop: 0,
-                  comentario_estrategia_valorizacion: 'N/A',
-                },
-                analisis_legal_arrendamiento: {
-                  requestId: item.requestId || item.id,
-                  tipo_uso_principal_analizado: 'N/A',
-                  viabilidad_general_preliminar: 'N/A',
-                  puntos_criticos_y_riesgos: [],
-                  documentacion_clave_a_revisar_o_completar: [],
-                  consideraciones_contractuales_sugeridas: [],
-                  resumen_ejecutivo_legal: 'N/A',
-                },
-                gemini_usage_metadata: {
-                  economico: {
-                    promptTokenCount: 0,
-                    candidatesTokenCount: 0,
-                    totalTokenCount: 0,
-                    promptTokensDetails: [],
-                    thoughtsTokenCount: 0,
-                  },
-                },
-              },
-            };
+            console.error("Error parsing data for item:", item.id, e);
+            return null;
           }
-        });
+        }).filter((item): item is ParsedAppraisal => item !== null);
+
         setAppraisals(parsedData);
         setFilteredAppraisals(parsedData);
+
       } catch (err: any) {
         console.error('Error fetching appraisals:', err);
         toast({
           title: "Error al cargar historial",
-          description: err.message || "Ocurrió un error al cargar el historial de peritajes.",
+          description: err.message || "Ocurrió un error al cargar el historial.",
           variant: "destructive",
         });
       } finally {
@@ -231,13 +175,13 @@ export default function History() {
   }
 
 
-  if (!user) {
+  if (!user && appraisals.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
-        <p>Por favor, inicia sesión para ver tu historial.</p>
-        <Link href="/auth" className="inline-flex items-center text-primary mt-4">
-          Iniciar Sesión / Registrarse
-        </Link>
+        <p>No tienes peritajes en tu historial.</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Puedes <Link href="/auth" className="text-primary hover:underline">iniciar sesión</Link> para ver tu historial guardado o realizar un nuevo peritaje.
+        </p>
       </div>
     );
   }
@@ -281,40 +225,47 @@ export default function History() {
                     <p className="text-muted-foreground mb-4">
                       ID de Solicitud: {appraisal.request_id || 'N/A'}
                     </p>
-                    <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-                      <span className="font-medium">Ciudad:</span> <span>{appraisal.initial_data?.ciudad || 'N/A'}</span>
-                      <span className="font-medium">Tipo de Inmueble:</span> <span>{appraisal.initial_data?.tipo_inmueble || 'N/A'}</span>
-                      <span className="font-medium">Área:</span> <span>{appraisal.initial_data?.area_usuario_m2 > 0 ? `${appraisal.initial_data.area_usuario_m2} m²` : 'N/A m²'}</span>
-                      <>
-                        <span className="font-medium">Canon Mensual Estimado:</span>
-                        <span>
-                          {appraisal.appraisal_data?.valoracion_arriendo_actual?.estimacion_canon_mensual_cop !== undefined && appraisal.appraisal_data.valoracion_arriendo_actual.estimacion_canon_mensual_cop !== null
-                            ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisal.appraisal_data.valoracion_arriendo_actual.estimacion_canon_mensual_cop)
-                            : 'N/A'}
-                        </span>
-                      </>
-                      <>
-                        <span className="font-medium">Consideraciones Legales:</span>
-                        <span>
-                          {appraisal.appraisal_data?.analisis_legal_arrendamiento?.consideraciones_contractuales_sugeridas?.length > 0
-                            ? appraisal.appraisal_data.analisis_legal_arrendamiento.consideraciones_contractuales_sugeridas.join(', ')
-                            : 'N/A'}
-                        </span>
-                      </>
-                      <>
-                        <span className="font-medium">Resumen Legal Ejecutivo:</span>
-                        <span>
-                          {appraisal.appraisal_data?.analisis_legal_arrendamiento?.resumen_ejecutivo_legal || 'N/A'}
-                        </span>
-                      </>
-                      <>
-                        <span className="font-medium">Canon Potencial con Mejoras:</span>
-                        <span>
-                          {appraisal.appraisal_data?.potencial_valorizacion_con_mejoras_explicado?.canon_potencial_total_estimado_cop !== undefined && appraisal.appraisal_data.potencial_valorizacion_con_mejoras_explicado.canon_potencial_total_estimado_cop !== null
-                            ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(appraisal.appraisal_data.potencial_valorizacion_con_mejoras_explicado.canon_potencial_total_estimado_cop)
-                            : 'N/A'}
-                        </span>
-                      </>
+                    <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm mt-4 border-t pt-4">
+                      <h3 className="col-span-2 text-lg font-semibold mb-2">Resumen del Peritaje</h3>
+                      
+                      <span className="font-medium">Ciudad:</span>
+                      <span>{appraisal.form_data?.ciudad || 'No disponible'}</span>
+
+                      <span className="font-medium">Dirección:</span>
+                      <span>{appraisal.form_data?.direccion || 'No disponible'}</span>
+
+                      <span className="font-medium">Tipo de Inmueble:</span>
+                      <span>{appraisal.form_data?.tipo_inmueble || 'No disponible'}</span>
+
+                      <span className="font-medium">Área Construida:</span>
+                      <span>{appraisal.form_data?.area_usuario_m2 ? `${appraisal.form_data.area_usuario_m2} m²` : 'No disponible'}</span>
+
+                      <span className="font-medium">Estrato:</span>
+                      <span>{appraisal.form_data?.estrato || 'No disponible'}</span>
+
+                      <span className="font-medium text-green-700">Canon Mensual Estimado:</span>
+                      <span className="font-bold text-green-700">
+                        {appraisal.result_data?.valoracion_arriendo_actual?.estimacion_canon_mensual_cop
+                          ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(appraisal.result_data.valoracion_arriendo_actual.estimacion_canon_mensual_cop)
+                          : 'No disponible'}
+                      </span>
+
+                      <span className="font-medium text-blue-700">Canon Potencial con Mejoras:</span>
+                      <span className="font-bold text-blue-700">
+                        {appraisal.result_data?.potencial_valorizacion_con_mejoras_explicado?.canon_potencial_total_estimado_cop
+                          ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(appraisal.result_data.potencial_valorizacion_con_mejoras_explicado.canon_potencial_total_estimado_cop)
+                          : 'No disponible'}
+                      </span>
+
+                      <span className="font-medium col-span-2 mt-2">Viabilidad Legal:</span>
+                      <p className="col-span-2 text-xs bg-gray-50 p-2 rounded">
+                        {appraisal.result_data?.analisis_legal_arrendamiento?.viabilidad_general_preliminar || 'No disponible'}
+                      </p>
+
+                      <span className="font-medium col-span-2 mt-2">Resumen Ejecutivo Legal:</span>
+                      <p className="col-span-2 text-xs bg-gray-50 p-2 rounded">
+                        {appraisal.result_data?.analisis_legal_arrendamiento?.resumen_ejecutivo_legal || 'No disponible'}
+                      </p>
                     </div>
                   </div>
                   <Button

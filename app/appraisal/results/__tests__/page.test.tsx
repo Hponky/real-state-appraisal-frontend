@@ -15,7 +15,7 @@ describe('Results Page', () => {
     requestId: 'test-123',
     status: 'completed',
     results: {
-      initial_data: {
+      form_data: {
         ciudad: 'Bogota',
         tipo_inmueble: 'Apartamento',
         estrato: 4,
