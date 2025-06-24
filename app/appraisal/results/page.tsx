@@ -12,6 +12,7 @@ import { AppraisalValorizationPotential } from "@/components/appraisal-results/A
 import { AppraisalLegalAnalysis } from "@/components/appraisal-results/AppraisalLegalAnalysis";
 import { AppraisalModals } from "@/components/appraisal-results/AppraisalModals";
 import { Skeleton } from "@/components/ui/skeleton";
+import LoadingAnalysis from "@/components/appraisal-results/LoadingAnalysis";
 
 export default function Results() {
   const {
@@ -43,6 +44,7 @@ export default function Results() {
         </div>
         <Skeleton className="h-8 w-1/3 mb-8" />
         <div className="space-y-6">
+          <LoadingAnalysis />
           <Skeleton className="h-40 w-full" />
           <Skeleton className="h-40 w-full" />
           <Skeleton className="h-40 w-full" />
