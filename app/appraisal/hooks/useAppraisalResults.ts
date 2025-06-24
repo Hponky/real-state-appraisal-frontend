@@ -148,7 +148,10 @@ export function useAppraisalResults() {
   }, [user, isLoading, error, appraisalData, isAuthLoading]);
 
   const handleDownloadPdf = async () => {
-    if (!appraisalData?.request_id) {
+    const params = new URLSearchParams(window.location.search);
+    const requestId = params.get('id');
+
+    if (!requestId) {
       toast({
         title: "Error de descarga",
         description: "No se pudo descargar el PDF: ID de peritaje no disponible.",
@@ -159,7 +162,7 @@ export function useAppraisalResults() {
 
     if (user && user.email && userSession?.access_token) {
       try {
-        await appraisalApiService.downloadPdf(appraisalData.request_id, userSession.access_token);
+        await appraisalApiService.downloadPdf(requestId, userSession.access_token);
         toast({
           title: "Descarga iniciada",
           description: "El PDF debería comenzar a descargarse en breve.",
