@@ -4,20 +4,15 @@ import { Input } from "@/components/ui/input";
 import { X, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image"; // Import Image component
+import { useAppraisalFormContext } from "../context/AppraisalFormContext";
 
-interface ImageUploadSectionProps {
-    images: string[];
-    errors: Record<string, string>;
-    handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    removeImage: (index: number) => void;
-}
-
-export function ImageUploadSection({
-    images,
-    errors,
-    handleImageUpload,
-    removeImage,
-}: ImageUploadSectionProps) {
+export function ImageUploadSection() {
+    const {
+        images,
+        errors,
+        handleImageUpload,
+        removeImage,
+    } = useAppraisalFormContext();
     return (
         <>
             <div className="space-y-2">

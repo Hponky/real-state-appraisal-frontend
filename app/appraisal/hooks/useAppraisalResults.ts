@@ -15,7 +15,7 @@ export function useAppraisalResults() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showAlreadySavedModal, setShowAlreadySavedModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { user, isLoading: isAuthLoading, isInitialAuthLoaded } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
 
   const fetchAndSetAppraisal = useCallback(async (requestId: string) => {
@@ -135,25 +135,17 @@ export function useAppraisalResults() {
   useEffect(() => {
     // Solo mostrar el modal si el usuario no está autenticado, la carga del peritaje ha terminado,
     // no hay errores, hay datos de peritaje Y la autenticación ha terminado de cargar.
-    // Mostrar el modal de inicio de sesión solo si:
-    // 1. Hay datos de peritaje cargados.
-    // 2. La carga del peritaje ha terminado.
-    // 3. No hay errores.
-    // 4. La autenticación ha terminado de cargar.
-    // 5. El usuario es anónimo (tiene un ID pero no un email).
-    // 6. El peritaje no ha sido guardado previamente por un usuario autenticado.
     if (
       appraisalData &&
       !isLoading &&
       !error &&
-      isInitialAuthLoaded && // Asegurarse de que la carga inicial de autenticación haya terminado
-      user?.id && // El usuario tiene un ID (es decir, hay una sesión, incluso anónima)
-      !user?.email && // Pero no tiene un email (es decir, es anónimo)
-      appraisalData.user_id === null // Y el peritaje no está asociado a un usuario autenticado
+      !isAuthLoading &&
+      user?.is_anonymous === true &&
+      appraisalData.user_id === null
     ) {
       setShowLoginModal(true);
     }
-  }, [user, isLoading, error, appraisalData, isAuthLoading, isInitialAuthLoaded]);
+  }, [user, isLoading, error, appraisalData, isAuthLoading]);
 
   const handleDownloadPdf = async () => {
     if (!appraisalData?.request_id) {

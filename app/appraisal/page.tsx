@@ -1,7 +1,6 @@
 "use client";
 // Forzar recarga de tipos
 
-import useAppraisalForm from './hooks/useAppraisalForm';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,40 +14,27 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import LegalSections from './components/LegalSections';
 import { Switch } from "@/components/ui/switch";
-import { FormProvider } from 'react-hook-form'; // Importar FormProvider
+import { FormProvider as RHFFormProvider } from 'react-hook-form';
+import { AppraisalFormProvider, useAppraisalFormContext } from './context/AppraisalFormContext';
 
-export default function AppraisalForm() {
-  const methods = useAppraisalForm(); // Obtener todos los métodos del hook
+// Componente de formulario interno que consume el contexto
+const AppraisalFormContent = () => {
   const {
+    methods,
     formData,
-    images,
     errors,
     isSubmitting,
-    handleImageUpload,
-    removeImage,
     submitFormData,
     departments,
     cities,
     isLoadingPlaces,
     placesError,
-    materialQualityEntries,
-    addMaterialQualityEntry,
-    removeMaterialQualityEntry,
-    updateMaterialQualityEntry,
-    handleNumericChange,
-    handleStringChange,
-    handleBooleanChange,
-    handleZonaDeclaratoriaChange,
-    handlePotRestrictionChange,
-    handleZonaDeclaratoriaRestriccionesChange,
     showLegalSections,
     setShowLegalSections,
-    handleLegalBooleanChange,
-    handlePHBooleanChange,
-    handlePHStringChange,
-    useTestValues, // Desestructurar el estado del switch
-    setUseTestValues, // Desestructurar la función para cambiar el estado del switch
-  } = methods; // Desestructurar los métodos de 'methods'
+    useTestValues,
+    setUseTestValues,
+    handleNumericChange,
+  } = useAppraisalFormContext();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary py-8">
@@ -67,7 +53,6 @@ export default function AppraisalForm() {
             <h1 className="text-3xl font-bold mb-2">Ingreso de Datos del Inmueble</h1>
             <p className="text-muted-foreground mb-4">Complete la información requerida para evaluar su inmueble</p>
 
-            {/* Switch para usar datos de prueba */}
             <div className="flex items-center space-x-2 mb-8">
               <Switch
                 id="use-test-data"
@@ -88,22 +73,10 @@ export default function AppraisalForm() {
                  </div>
             )}
 
-
-            <FormProvider {...methods}> {/* Envolver el formulario con FormProvider */}
-              <form onSubmit={methods.handleSubmit(submitFormData, (errors) => { console.error("Form validation errors (page.tsx):", errors); })} className="space-y-6" encType="multipart/form-data" method="POST">
-                <LocationFields
-                    departments={departments}
-                    cities={cities}
-                    isLoadingPlaces={isLoadingPlaces}
-                    placesError={placesError}
-                />
-
-                <PropertyDetailsFields
-                    formData={formData}
-                    errors={errors}
-                    handleNumericChange={handleNumericChange}
-                    handleStringChange={handleStringChange}
-                />
+            <RHFFormProvider {...methods}>
+              <form onSubmit={methods.handleSubmit(submitFormData, (formErrors) => { console.error("Form validation errors (page.tsx):", formErrors); })} className="space-y-6" encType="multipart/form-data" method="POST">
+                <LocationFields />
+                <PropertyDetailsFields />
 
                 <div className="space-y-2">
                   <Label htmlFor="expectedValue">Valor Esperado del Arriendo (COP)</Label>
@@ -118,7 +91,6 @@ export default function AppraisalForm() {
                   {errors.expectedValue && <p className="text-sm text-destructive">{errors.expectedValue}</p>}
                 </div>
 
-                {/* Toggle para mostrar/ocultar secciones legales */}
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="show-legal-sections"
@@ -128,36 +100,10 @@ export default function AppraisalForm() {
                   <Label htmlFor="show-legal-sections">Incluir Secciones Legales (Opcional)</Label>
                 </div>
 
-                <ImageUploadSection
-                    images={images}
-                    errors={errors}
-                    handleImageUpload={handleImageUpload}
-                    removeImage={removeImage}
-                />
+                <ImageUploadSection />
+                <MaterialQualitySection />
 
-                <MaterialQualitySection
-                    materialQualityEntries={materialQualityEntries}
-                    errors={errors}
-                    addMaterialQualityEntry={addMaterialQualityEntry}
-                    removeMaterialQualityEntry={removeMaterialQualityEntry}
-                    updateMaterialQualityEntry={updateMaterialQualityEntry}
-                />
-
-                {/* Renderizar secciones legales condicionalmente */}
-                {showLegalSections && (
-                  <LegalSections
-                    formData={formData}
-                    errors={errors}
-                    handleStringChange={handleStringChange}
-                    handleBooleanChange={handleBooleanChange}
-                    handleZonaDeclaratoriaChange={handleZonaDeclaratoriaChange}
-                    handlePHBooleanChange={handlePHBooleanChange}
-                    handlePHStringChange={handlePHStringChange}
-                    handleLegalBooleanChange={handleLegalBooleanChange}
-                    handlePotRestrictionChange={handlePotRestrictionChange}
-                    handleZonaDeclaratoriaRestriccionesChange={handleZonaDeclaratoriaRestriccionesChange}
-                  />
-                )}
+                {showLegalSections && <LegalSections />}
 
                 <Button
                   type="submit"
@@ -167,10 +113,19 @@ export default function AppraisalForm() {
                   {isSubmitting ? "Procesando..." : "Continuar y Evaluar"}
                 </Button>
               </form>
-            </FormProvider> {/* Cerrar FormProvider */}
+            </RHFFormProvider>
           </Card>
         </motion.div>
       </div>
     </div>
+  );
+};
+
+// Componente principal que envuelve todo en el proveedor
+export default function AppraisalForm() {
+  return (
+    <AppraisalFormProvider>
+      <AppraisalFormContent />
+    </AppraisalFormProvider>
   );
 }

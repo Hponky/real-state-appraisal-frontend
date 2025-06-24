@@ -1,120 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { appraisalApiService } from "@/app/services/appraisalApiService";
-import { AppraisalResult } from "@/app/appraisal/types/appraisal-results";
 import AppraisalDetailModal from "@/components/AppraisalDetailModal";
 import { useToast } from "@/hooks/use-toast";
-import { useSupabase } from "@/components/supabase-provider";
-
-type AppraisalHistoryItem = {
-  id: string;
-  userId: string;
-  anonymousSessionId: string | null;
-  appraisalData: string; // appraisalData es un string JSON
-  createdAt: string;
-  requestId: string; // Add requestId as it's present in the raw data
-};
-
-type ParsedAppraisal = {
-  id: string;
-  createdAt: string;
-} & AppraisalResult;
+import { useAppraisalHistory } from "./hooks/useAppraisalHistory";
+import { AppraisalHistoryCard } from "./components/AppraisalHistoryCard";
+import { ParsedAppraisal } from "./utils/parsing";
 
 export default function History() {
-  const [appraisals, setAppraisals] = useState<ParsedAppraisal[]>([]);
+  const { appraisals, loading, isAuthLoading } = useAppraisalHistory();
   const [filteredAppraisals, setFilteredAppraisals] = useState<ParsedAppraisal[]>([]);
   const [selectedAppraisal, setSelectedAppraisal] = useState<ParsedAppraisal | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
-  const { user, session, isLoading: isAuthLoading } = useAuth();
-  const { supabase } = useSupabase();
-  const [loading, setLoading] = useState(true);
+  const { user, session } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchAppraisals = async () => {
-      if (isAuthLoading) return;
-      setLoading(true);
-
-      try {
-        let data: any[] = [];
-        if (user && session?.access_token) {
-          // Usuario autenticado
-          data = await appraisalApiService.getAppraisalHistory(session.access_token);
-        } else {
-          // Usuario anónimo
-          const anonymousSessionId = localStorage.getItem('anonymous_session_id');
-          if (anonymousSessionId) {
-            if (supabase) {
-              data = await appraisalApiService.getAnonymousAppraisals(supabase, anonymousSessionId);
-            }
-          }
-        }
-        
-        // La lógica de parseo es compleja y se puede reutilizar para ambos casos
-        const parsedData: ParsedAppraisal[] = data.map(item => {
-          try {
-            // Los datos ahora vienen como objetos, no es necesario el parseo.
-            const formDataRaw = item.formData || {};
-            const resultDataRaw = item.resultData || {};
-
-            // Normalizar la estructura de form_data
-            const infoBasica = formDataRaw.informacion_basica || formDataRaw;
-            const finalFormData = {
-              ...formDataRaw,
-              ...infoBasica,
-            };
-            
-            // Normalizar la estructura de result_data
-            const finalResultData = resultDataRaw.result_data || resultDataRaw;
-
-            const appraisalResult: AppraisalResult = {
-              id: item.id,
-              request_id: finalFormData.requestId || item.id,
-              user_id: item.userId,
-              created_at: item.createdAt,
-              form_data: finalFormData,
-              result_data: finalResultData,
-              status: item.status,
-            };
-
-            return {
-              createdAt: item.createdAt,
-              ...appraisalResult,
-            };
-          } catch (e) {
-            console.error("Error parsing data for item:", item.id, e);
-            return null;
-          }
-        }).filter((item): item is ParsedAppraisal => item !== null);
-
-        setAppraisals(parsedData);
-        setFilteredAppraisals(parsedData);
-
-      } catch (err: any) {
-        console.error('Error fetching appraisals:', err);
-        toast({
-          title: "Error al cargar historial",
-          description: err.message || "Ocurrió un error al cargar el historial.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAppraisals();
-  }, [user, session, isAuthLoading]);
+    setFilteredAppraisals(appraisals);
+  }, [appraisals]);
 
   const handleDateFilter = (date: string) => {
     setDateFilter(date);
@@ -216,71 +128,12 @@ export default function History() {
             <p className="text-center text-muted-foreground">No hay peritajes guardados en tu historial.</p>
           ) : (
             filteredAppraisals.map((appraisal) => (
-              <Card key={appraisal.id} className="p-6 cursor-pointer" onClick={() => handleCardClick(appraisal)}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-xl font-semibold mb-2">
-                      Peritaje del {appraisal.createdAt ? format(new Date(appraisal.createdAt), 'dd/MM/yyyy HH:mm') : 'Fecha desconocida'}
-                    </h2>
-                    <p className="text-muted-foreground mb-4">
-                      ID de Solicitud: {appraisal.request_id || 'N/A'}
-                    </p>
-                    <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm mt-4 border-t pt-4">
-                      <h3 className="col-span-2 text-lg font-semibold mb-2">Resumen del Peritaje</h3>
-                      
-                      <span className="font-medium">Ciudad:</span>
-                      <span>{appraisal.form_data?.ciudad || 'No disponible'}</span>
-
-                      <span className="font-medium">Dirección:</span>
-                      <span>{appraisal.form_data?.direccion || 'No disponible'}</span>
-
-                      <span className="font-medium">Tipo de Inmueble:</span>
-                      <span>{appraisal.form_data?.tipo_inmueble || 'No disponible'}</span>
-
-                      <span className="font-medium">Área Construida:</span>
-                      <span>{appraisal.form_data?.area_usuario_m2 ? `${appraisal.form_data.area_usuario_m2} m²` : 'No disponible'}</span>
-
-                      <span className="font-medium">Estrato:</span>
-                      <span>{appraisal.form_data?.estrato || 'No disponible'}</span>
-
-                      <span className="font-medium text-green-700">Canon Mensual Estimado:</span>
-                      <span className="font-bold text-green-700">
-                        {appraisal.result_data?.valoracion_arriendo_actual?.estimacion_canon_mensual_cop
-                          ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(appraisal.result_data.valoracion_arriendo_actual.estimacion_canon_mensual_cop)
-                          : 'No disponible'}
-                      </span>
-
-                      <span className="font-medium text-blue-700">Canon Potencial con Mejoras:</span>
-                      <span className="font-bold text-blue-700">
-                        {appraisal.result_data?.potencial_valorizacion_con_mejoras_explicado?.canon_potencial_total_estimado_cop
-                          ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(appraisal.result_data.potencial_valorizacion_con_mejoras_explicado.canon_potencial_total_estimado_cop)
-                          : 'No disponible'}
-                      </span>
-
-                      <span className="font-medium col-span-2 mt-2">Viabilidad Legal:</span>
-                      <p className="col-span-2 text-xs bg-gray-50 p-2 rounded">
-                        {appraisal.result_data?.analisis_legal_arrendamiento?.viabilidad_general_preliminar || 'No disponible'}
-                      </p>
-
-                      <span className="font-medium col-span-2 mt-2">Resumen Ejecutivo Legal:</span>
-                      <p className="col-span-2 text-xs bg-gray-50 p-2 rounded">
-                        {appraisal.result_data?.analisis_legal_arrendamiento?.resumen_ejecutivo_legal || 'No disponible'}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation(); // Evitar que el clic en el botón propague al Card
-                      handleDownloadPDF(appraisal);
-                    }}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Descargar PDF
-                  </Button>
-                </div>
-              </Card>
+              <AppraisalHistoryCard
+                key={appraisal.id}
+                appraisal={appraisal}
+                onCardClick={handleCardClick}
+                onDownloadPdf={handleDownloadPDF}
+              />
             ))
           )}
         </div>

@@ -40,8 +40,11 @@ export function AppraisalModals({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Ahora no</AlertDialogCancel>
-            <AlertDialogAction onClick={() => window.open('/auth', '_blank')}>
+            <AlertDialogCancel onClick={() => setShowLoginModal(false)}>Ahora no</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              window.open('/auth', '_blank');
+              setShowLoginModal(false);
+            }}>
               Iniciar Sesión / Registrarse
             </AlertDialogAction>
           </AlertDialogFooter>

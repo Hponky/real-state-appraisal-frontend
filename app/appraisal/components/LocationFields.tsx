@@ -10,21 +10,11 @@ import {
 import { useFormContext } from "react-hook-form";
 import { AppraisalFormData } from "../hooks/appraisalFormSchema";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { useAppraisalFormContext } from "../context/AppraisalFormContext";
 
-interface LocationFieldsProps {
-  departments: string[];
-  cities: string[];
-  isLoadingPlaces: boolean;
-  placesError: string | null;
-}
-
-export function LocationFields({
-  departments,
-  cities,
-  isLoadingPlaces,
-  placesError,
-}: LocationFieldsProps) {
+export function LocationFields() {
   const { control, formState: { errors }, setValue, watch } = useFormContext<AppraisalFormData>();
+  const { departments, cities, isLoadingPlaces, placesError } = useAppraisalFormContext();
   const formData = watch();
 
   return (

@@ -31,28 +31,18 @@ const potRestrictionPlaceholders: Record<string, string> = {
   pot_otra_restriccion_pot: "Ej: Restricción por plan parcial de desarrollo; Limitación por área de expansión urbana"
 };
 
-interface SectionCFieldsProps {
-  formData: AppraisalFormData;
-  errors: Record<string, string>;
-  handleStringChange: (field: keyof AppraisalFormData, value: string) => void;
-  handleBooleanChange: (field: keyof AppraisalFormData, checked: boolean) => void;
-  handlePotRestrictionChange: (field: keyof AppraisalFormData, selected: boolean, description?: string) => void;
-  handleZonaDeclaratoriaChange: (
-    field: 'aplica' | 'tipo' | 'fuente' | 'otras_restricciones_seleccion' | 'otras_restricciones_descripcion' | 'restricciones_comunes_descripcion' | 'declaratoriaImponeObligaciones',
-    value: boolean | string | undefined
-  ) => void;
-  handleZonaDeclaratoriaRestriccionesChange: (restriction: string, checked: boolean) => void;
-}
+import { useAppraisalFormContext } from '../context/AppraisalFormContext';
 
-const SectionCFields: React.FC<SectionCFieldsProps> = ({
-  formData,
-  errors,
-  handleStringChange,
-  handleBooleanChange,
-  handlePotRestrictionChange,
-  handleZonaDeclaratoriaChange,
-  handleZonaDeclaratoriaRestriccionesChange,
-}) => {
+const SectionCFields: React.FC = () => {
+  const {
+    formData,
+    errors,
+    handleStringChange,
+    handleBooleanChange,
+    handlePotRestrictionChange,
+    handleZonaDeclaratoriaChange,
+    handleZonaDeclaratoriaRestriccionesChange,
+  } = useAppraisalFormContext();
   const showOtherPotRestrictionTextarea = formData.pot_otra_restriccion_pot?.selected;
 
   return (

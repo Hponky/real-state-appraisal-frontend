@@ -1,6 +1,80 @@
 import { AppraisalFormData, AppraisalResult, MaterialQualityEntry } from '../appraisal/types/appraisal-results';
 import { SupabaseClient } from '@supabase/supabase-js';
 
+type ApiClientOptions = {
+   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+   headers?: HeadersInit;
+   body?: any;
+   accessToken?: string | null;
+   responseType?: 'json' | 'blob' | 'text';
+};
+
+const apiClient = async <T>(endpoint: string, options: ApiClientOptions = {}): Promise<T> => {
+   const {
+       method = 'GET',
+       headers: customHeaders = {},
+       body,
+       accessToken,
+       responseType = 'json',
+   } = options;
+
+   const headers = new Headers(customHeaders);
+
+   if (!headers.has('Content-Type')) {
+       headers.set('Content-Type', 'application/json');
+   }
+
+   if (accessToken) {
+       headers.set('Authorization', `Bearer ${accessToken}`);
+   }
+
+   const config: RequestInit = {
+       method,
+       headers,
+   };
+
+   if (body) {
+       config.body = JSON.stringify(body);
+   }
+
+   try {
+       const response = await fetch(endpoint, config);
+
+       if (!response.ok) {
+           let errorData;
+           try {
+               // Intenta parsear el error como JSON, que es el formato más común
+               const jsonError = await response.json();
+               errorData = jsonError.message || JSON.stringify(jsonError);
+           } catch (e) {
+               // Si falla, lee el error como texto plano
+               errorData = await response.text();
+           }
+           // Lanza un error estandarizado
+           throw new Error(`Error ${response.status}: ${errorData || 'Ocurrió un error en el servidor'}`);
+       }
+
+       // Maneja diferentes tipos de respuesta según lo especificado
+       if (responseType === 'blob') {
+           return response.blob() as Promise<T>;
+       }
+       if (responseType === 'text') {
+           return response.text() as Promise<T>;
+       }
+       // Por defecto, o si se especifica 'json', parsea como JSON
+       // Si la respuesta no tiene cuerpo (ej. 204 No Content), `response.json()` puede fallar.
+       const text = await response.text();
+       return text ? JSON.parse(text) : ({} as T);
+
+   } catch (error) {
+       // Captura errores de red u otros problemas con el fetch
+       console.error(`API Client Error (${method} ${endpoint}):`, error);
+       // Re-lanza el error para que el código que llama pueda manejarlo
+       throw error;
+   }
+};
+
+
 // Define the payload structure for the submission to n8n
 export interface AppraisalSubmissionPayload extends Partial<Omit<AppraisalFormData, 'images'>> {
   requestId: string;
@@ -13,99 +87,32 @@ export interface AppraisalSubmissionPayload extends Partial<Omit<AppraisalFormDa
 }
 
 export const appraisalApiService = {
-    submitAppraisal: async (requestId: string, payload: AppraisalSubmissionPayload, accessToken: string | null = null): Promise<void> => {
-        try {
-            const requestBody = {
-                requestId: requestId,
-                formData: payload, // Now sending the constructed payload
-            };
-
-            const headers: HeadersInit = {
-                'Content-Type': 'application/json', // Enviar como JSON
-            };
-
-            if (accessToken) {
-                headers['Authorization'] = `Bearer ${accessToken}`;
-            }
-
-            const n8nWebhookUrl = '/api/n8n/recepcion-datos-inmueble'; // Usar la ruta local proxied y especificar el nombre del webhook
-            try {
-                const response = await fetch(n8nWebhookUrl, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(requestBody), // Enviar el cuerpo como JSON string
-                });
-
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        throw new Error('El servicio de peritaje no está disponible en este momento. Por favor, inténtalo de nuevo más tarde.');
-                    }
-                    const errorBody = await response.text(); // Leer el cuerpo una sola vez como texto
-                    let errorData: string;
-                    try {
-                        const jsonError = JSON.parse(errorBody);
-                        errorData = JSON.stringify(jsonError); // Always stringify the full JSON object if parsing succeeds
-                    } catch (parseError) {
-                        errorData = errorBody || 'Unknown server error'; // Fallback to raw text if parsing fails
-                    }
-                    throw new Error(`Error ${response.status}: ${errorData}`);
-                }
-
-            // Assuming success does not return a specific body needed by the hook
-           } catch (error) {
-               // Si el fetch mismo falla (ej. error de red), es una indicación de que el servicio no está disponible.
-               // El error 404 se maneja arriba. Este catch es para errores de red.
-               throw new Error('El servicio de peritaje no está disponible en este momento. Por favor, inténtalo de nuevo más tarde.');
-           }
-       } catch (error) {
-           throw error; // Re-throw to be caught by the hook
-       
-   }
+   submitAppraisal: async (requestId: string, payload: AppraisalSubmissionPayload, accessToken: string | null = null): Promise<void> => {
+       const requestBody = {
+           requestId: requestId,
+           formData: payload,
+       };
+       // El endpoint de n8n no devuelve contenido en caso de éxito
+       await apiClient<void>('/api/n8n/recepcion-datos-inmueble', {
+           method: 'POST',
+           body: requestBody,
+           accessToken,
+           responseType: 'text', // Esperamos texto o nada, no JSON
+       });
    },
 
    getAppraisalHistory: async (accessToken: string): Promise<any[]> => {
-     try {
-       const response = await fetch('/api/appraisal/history', {
-         method: 'GET',
-         headers: {
-           'Content-Type': 'application/json',
-           'Authorization': `Bearer ${accessToken}`,
-         },
+       return apiClient<any[]>('/api/appraisal/history', {
+           accessToken,
        });
-
-       if (!response.ok) {
-         const errorData = await response.json();
-         throw new Error(errorData.message || 'Error al obtener el historial de peritajes.');
-       }
-
-       return response.json();
-     } catch (error) {
-       throw error;
-     }
    },
 
    downloadPdf: async (appraisalId: string, accessToken: string, filename: string = `resultados-peritaje-${appraisalId}.pdf`): Promise<void> => {
-     try {
-       const response = await fetch(`/api/appraisal/download-pdf?appraisalId=${appraisalId}`, {
-         method: 'GET',
-         headers: {
-           'Authorization': `Bearer ${accessToken}`,
-         },
+       const blob = await apiClient<Blob>(`/api/appraisal/download-pdf?appraisalId=${appraisalId}`, {
+           accessToken,
+           responseType: 'blob',
        });
- 
-       if (!response.ok) {
-         const errorBody = await response.text();
-         let errorData: string;
-         try {
-           const jsonError = JSON.parse(errorBody);
-           errorData = jsonError.message || JSON.stringify(jsonError);
-         } catch (parseError) {
-           errorData = errorBody || 'Error desconocido al descargar el PDF.';
-         }
-         throw new Error(`Error ${response.status}: ${errorData}`);
-       }
- 
-       const blob = await response.blob();
+
        const url = window.URL.createObjectURL(blob);
        const a = document.createElement('a');
        a.href = url;
@@ -114,38 +121,21 @@ export const appraisalApiService = {
        a.click();
        a.remove();
        window.URL.revokeObjectURL(url);
-     } catch (error) {
-       console.error("Error al descargar el PDF:", error);
-       throw error;
-     }
    },
 
    saveAppraisalResult: async (appraisalResult: AppraisalResult, userId: string | null, accessToken: string): Promise<void> => {
-     try {
        const requestBody = {
-         appraisalData: {
-           form_data: appraisalResult.form_data,
-           result_data: appraisalResult.result_data,
-         },
-         userId: userId,
+           appraisalData: {
+               form_data: appraisalResult.form_data,
+               result_data: appraisalResult.result_data,
+           },
+           userId: userId,
        };
-
-       const response = await fetch('/api/appraisal/save-result', {
-         method: 'POST',
-         headers: {
-           'Content-Type': 'application/json',
-           'Authorization': `Bearer ${accessToken}`,
-         },
-         body: JSON.stringify(requestBody),
+       await apiClient<void>('/api/appraisal/save-result', {
+           method: 'POST',
+           body: requestBody,
+           accessToken,
        });
-
-       if (!response.ok) {
-         const errorData = await response.json();
-         throw new Error(errorData.message || 'Error al guardar el resultado del peritaje.');
-       }
-     } catch (error) {
-       throw error;
-     }
    },
 
   getAnonymousAppraisals: async (supabaseClient: SupabaseClient, anonymousSessionId: string): Promise<AppraisalResult[]> => {
@@ -161,22 +151,9 @@ export const appraisalApiService = {
    },
 
    associateAnonymousAppraisals: async (anonymousSessionId: string, userId: string): Promise<void> => {
-    try {
-        const response = await fetch('/api/appraisal/associate-user', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ anonymousSessionId, userId }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Error al asociar los peritajes.');
-        }
-    } catch (error) {
-        console.error("Error al asociar peritajes con usuario:", error);
-        throw error;
-    }
+       await apiClient<void>('/api/appraisal/associate-user', {
+           method: 'POST',
+           body: { anonymousSessionId, userId },
+       });
    },
 };

@@ -8,21 +8,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AppraisalFormData } from "../hooks/appraisalFormSchema";
-import { Dispatch, SetStateAction } from "react";
+import { useAppraisalFormContext } from "../context/AppraisalFormContext";
 
-interface PropertyDetailsFieldsProps {
-    formData: AppraisalFormData;
-    errors: Record<string, string>;
-    handleNumericChange: (field: keyof AppraisalFormData, value: string) => void;
-    handleStringChange: (field: keyof AppraisalFormData, value: string) => void;
-}
-
-export function PropertyDetailsFields({
-    formData,
-    errors,
-    handleNumericChange,
-    handleStringChange, // Desestructurar handleStringChange
-}: PropertyDetailsFieldsProps) {
+export function PropertyDetailsFields() {
+    const {
+        formData,
+        errors,
+        handleNumericChange,
+        handleStringChange,
+    } = useAppraisalFormContext();
     return (
         <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">

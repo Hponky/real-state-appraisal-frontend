@@ -6,19 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import LabelWithHint from "./LabelWithHint";
 
-interface SectionGFieldsProps {
-  formData: AppraisalFormData;
-  errors: Record<string, string>;
-  handleStringChange: (field: keyof AppraisalFormData, value: string) => void;
-  handleBooleanChange: (field: keyof AppraisalFormData, checked: boolean) => void;
-}
+import { useAppraisalFormContext } from '../context/AppraisalFormContext';
 
-const SectionGFields: React.FC<SectionGFieldsProps> = ({
-  formData,
-  errors,
-  handleStringChange,
-  handleBooleanChange,
-}) => {
+const SectionGFields: React.FC = () => {
+  const { formData, errors, handleStringChange, handleBooleanChange } = useAppraisalFormContext();
   return (
     <div className="space-y-2">
       <h3 className="text-lg font-medium">Sección G: Documentación Disponible</h3>

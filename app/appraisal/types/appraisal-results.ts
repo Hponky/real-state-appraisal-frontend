@@ -32,9 +32,9 @@ export interface LegalDeclarations {
 }
 
 export interface MaterialQualityEntry {
-  material: string;
-  quality: string;
-  description: string;
+  id: string;
+  location: string;
+  qualityDescription: string;
 }
 
 export interface AppraisalFormData {

@@ -10,6 +10,7 @@ import { appraisalApiService } from '@/app/services/appraisalApiService';
 interface SupabaseContext {
   supabase: SupabaseClient;
   session: Session | null;
+  isInitialLoading: boolean;
 }
 
 const Context = createContext<SupabaseContext | undefined>(undefined);
@@ -22,6 +23,7 @@ export default function SupabaseProvider({
   const router = useRouter();
   const [supabase] = useState(() => createClientComponentClient());
   const [session, setSession] = useState<Session | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -66,6 +68,7 @@ export default function SupabaseProvider({
       } else {
         setSession(initialSession);
       }
+      setIsInitialLoading(false);
     });
 
     const appraisalChannel = supabase
@@ -105,7 +108,7 @@ export default function SupabaseProvider({
   }, [router, supabase, toast]);
 
   return (
-    <Context.Provider value={{ supabase, session }}>
+    <Context.Provider value={{ supabase, session, isInitialLoading }}>
       {children}
     </Context.Provider>
   );

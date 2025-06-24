@@ -5,17 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 // No LabelWithHint needed in this section based on current fields
 
-interface SectionDFieldsProps {
-  formData: AppraisalFormData;
-  errors: Record<string, string>;
-  handleStringChange: (field: keyof AppraisalFormData, value: string) => void;
-}
+import { useAppraisalFormContext } from '../context/AppraisalFormContext';
 
-const SectionDFields: React.FC<SectionDFieldsProps> = ({
-  formData,
-  errors,
-  handleStringChange,
-}) => {
+const SectionDFields: React.FC = () => {
+  const { formData, errors, handleStringChange } = useAppraisalFormContext();
   return (
     <div className="space-y-2">
       <h3 className="text-lg font-medium">Sección D: Condiciones del Contrato de Arrendamiento</h3>

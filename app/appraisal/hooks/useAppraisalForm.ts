@@ -185,7 +185,7 @@ export default function useAppraisalForm() {
   }, [formData.requestId, methods.formState.isSubmitting]);
 
   return {
-    ...methods,
+    methods,
     formData,
     images,
     imageFiles,

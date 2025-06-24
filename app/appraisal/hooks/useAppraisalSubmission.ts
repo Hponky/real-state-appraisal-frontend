@@ -123,7 +123,7 @@ const dataForN8n: AppraisalSubmissionPayload = {
     })(),
     imagesBase64: base64Images,
     materialQualityEntries: materialQualityEntries.filter(
-        entry => entry.material?.trim() !== '' || entry.quality?.trim() !== '' || entry.description?.trim() !== ''
+        entry => entry.location?.trim() !== '' || entry.qualityDescription?.trim() !== ''
     ),
 };
 

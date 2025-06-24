@@ -4,17 +4,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 // No LabelWithHint needed in this section based on current fields
 
-interface SectionHFieldsProps {
-  formData: AppraisalFormData;
-  errors: Record<string, string>;
-  handleLegalBooleanChange: (field: keyof AppraisalFormData['legal_declarations'], checked: boolean) => void;
-}
+import { useAppraisalFormContext } from '../context/AppraisalFormContext';
 
-const SectionHFields: React.FC<SectionHFieldsProps> = ({
-  formData,
-  errors,
-  handleLegalBooleanChange,
-}) => {
+const SectionHFields: React.FC = () => {
+  const { formData, errors, handleLegalBooleanChange } = useAppraisalFormContext();
   return (
     <div className="space-y-2">
       <h3 className="text-lg font-medium">Sección H: Declaración y Consentimiento</h3>

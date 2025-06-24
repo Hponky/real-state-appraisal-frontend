@@ -4,23 +4,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus } from "lucide-react";
 import { motion } from "framer-motion";
-import { MaterialQualityEntry } from "../hooks/useMaterialQualityEntries";
+import { useAppraisalFormContext } from "../context/AppraisalFormContext";
 
-interface MaterialQualitySectionProps {
-    materialQualityEntries: MaterialQualityEntry[];
-    errors: Record<string, string>; // Use Record<string, string> for errors
-    addMaterialQualityEntry: () => void;
-    removeMaterialQualityEntry: (id: string) => void;
-    updateMaterialQualityEntry: (id: string, field: keyof Omit<MaterialQualityEntry, 'id'>, value: string) => void;
-}
-
-export function MaterialQualitySection({
-    materialQualityEntries,
-    errors,
-    addMaterialQualityEntry,
-    removeMaterialQualityEntry,
-    updateMaterialQualityEntry,
-}: MaterialQualitySectionProps) {
+export function MaterialQualitySection() {
+    const {
+        materialQualityEntries,
+        errors,
+        addMaterialQualityEntry,
+        removeMaterialQualityEntry,
+        updateMaterialQualityEntry,
+    } = useAppraisalFormContext();
     return (
         <div className="space-y-4 border-t pt-6">
             <h2 className="text-xl font-semibold">Detalles de Calidad de Materiales (Opcional)</h2>

@@ -8,19 +8,15 @@ import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"; // Import Select components
 import { Switch } from "@/components/ui/switch"; // Import Switch
 
-interface SectionBFieldsProps {
-  formData: AppraisalFormData;
-  errors: Record<string, string>;
-  handleStringChange: (field: keyof AppraisalFormData, value: string) => void;
-  handleBooleanChange: (field: keyof AppraisalFormData, checked: boolean) => void;
-}
+import { useAppraisalFormContext } from '../context/AppraisalFormContext';
 
-const SectionBFields: React.FC<SectionBFieldsProps> = ({
-  formData,
-  errors,
-  handleStringChange,
-  handleBooleanChange,
-}) => {
+const SectionBFields: React.FC = () => {
+  const {
+    formData,
+    errors,
+    handlePHStringChange: handleStringChange,
+    handlePHBooleanChange: handleBooleanChange,
+  } = useAppraisalFormContext();
   return (
     <div className="space-y-4"> {/* Adjusted spacing */}
       <h3 className="text-lg font-medium">Sección B: Régimen de Propiedad Horizontal</h3>
